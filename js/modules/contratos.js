@@ -1,10 +1,9 @@
-import { getState, setState, updateContrato, addContrato, removeContrato } from '../state.js';
-import { saveContrato } from '../supabase.js';
-import { fD, fN, esc, toast, showLoader, hideLoader } from '../ui.js';
+import { getState } from '../state.js';
+import { fD, fN, esc, toast } from '../ui.js';
 import { navigateTo } from '../navigation.js';
 
 let editId = null;
-export let detId = null; // usado en detail
+export let detId = null;
 
 export function renderContratosList(container, actionsEl) {
   actionsEl.innerHTML = `
@@ -17,70 +16,37 @@ export function renderContratosList(container, actionsEl) {
     editId = null;
     navigateTo('form');
   });
-  
   const contratos = getState('contratos');
-  // Aquí iría la lógica de filtros y renderizado de tabla (similar al original)
-  container.innerHTML = '<div class="card">...</div>';
+  let html = `<div class="card"><div class="thdr"><h2>Contratos Registrados</h2><span class="tcnt">${contratos.length}</span></div>`;
+  if (!contratos.length) {
+    html += '<div class="empty">No hay contratos.</div></div>';
+  } else {
+    html += '<table><thead><tr><th>N° Ctto</th><th>Proveedor</th><th>Monto</th><th>Inicio</th><th>Fin</th></tr></thead><tbody>';
+    contratos.forEach(c => {
+      html += `<tr style="cursor:pointer" data-id="${c.id}">
+        <td>${esc(c.num)}</td><td>${esc(c.cont)}</td><td>${c.mon} ${fN(c.monto)}</td>
+        <td>${fD(c.fechaIni)}</td><td>${fD(c.fechaFin)}</td>
+      </tr>`;
+    });
+    html += '</tbody></table></div>';
+  }
+  container.innerHTML = html;
+  container.querySelectorAll('[data-id]').forEach(tr => {
+    tr.addEventListener('click', () => {
+      detId = tr.dataset.id;
+      navigateTo('detail');
+    });
+  });
 }
 
 export function renderContratoForm(container, actionsEl) {
   actionsEl.innerHTML = `<button class="btn btn-s" id="cancelFormBtn">← Volver</button>`;
   document.getElementById('cancelFormBtn').addEventListener('click', () => navigateTo('list'));
-  
-  // Cargar datos si editId existe
-  const contrato = editId ? getState('contratos').find(c => c.id === editId) : null;
-  container.innerHTML = generarFormulario(contrato);
-  setupFormEvents();
-}
-
-function setupFormEvents() {
-  document.getElementById('saveContractBtn').addEventListener('click', async () => {
-    // Validar y guardar
-    const contrato = obtenerDatosFormulario();
-    if (editId) {
-      updateContrato(editId, contrato);
-    } else {
-      contrato.id = Date.now().toString(36) + Math.random().toString(36).substr(2,5);
-      addContrato(contrato);
-    }
-    showLoader('Guardando...');
-    await saveContrato(contrato);
-    hideLoader();
-    toast('Contrato guardado', 'ok');
-    navigateTo('list');
-  });
-}
-
-function generarFormulario(contrato) {
-  // Retorna el HTML del formulario (similar al #vForm original)
-  return `...`;
-}
-
-function obtenerDatosFormulario() {
-  // Extrae los valores del formulario y retorna el objeto contrato
-  return {};
+  container.innerHTML = '<div class="card"><p>Formulario en construcción</p></div>';
 }
 
 export function renderContratoDetail(container, actionsEl) {
-  const contrato = getState('contratos').find(c => c.id === detId);
-  if (!contrato) return navigateTo('list');
-  
-  actionsEl.innerHTML = `
-    <div style="display:flex;gap:8px">
-      <button class="btn btn-s" id="backToListBtn">← Lista</button>
-      <button class="btn btn-p btn-sm" id="editContractBtn">✏️ Editar</button>
-    </div>
-  `;
+  actionsEl.innerHTML = `<button class="btn btn-s" id="backToListBtn">← Lista</button>`;
   document.getElementById('backToListBtn').addEventListener('click', () => navigateTo('list'));
-  document.getElementById('editContractBtn').addEventListener('click', () => {
-    editId = contrato.id;
-    navigateTo('form');
-  });
-  
-  container.innerHTML = generarHtmlDetalle(contrato);
-}
-
-function generarHtmlDetalle(contrato) {
-  // Retorna el HTML completo del detalle (dossier, enmiendas, etc.)
-  return `...`;
+  container.innerHTML = '<div class="card"><p>Detalle en construcción</p></div>';
 }

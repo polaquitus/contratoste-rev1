@@ -1,0 +1,3 @@
+export function renderMe2nList(container) { container.innerHTML = '<div class="card"><p>ME2N</p></div>'; }
+export function renderMe2nDetail(container) { container.innerHTML = '<div class="card"><p>Detalle ME2N</p></div>'; }
+// Similar para los demás...

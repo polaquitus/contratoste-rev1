@@ -22,8 +22,29 @@ const views = {
 export function setupNavigation() {
   const nav = document.getElementById('mainNav');
   const role = getState('rol') || 'SIN_ROL';
-  // Aquí construirías el menú según permisos (similar al HTML original)
-  // Por brevedad, se omite la construcción dinámica, pero puedes adaptarlo.
+  const perms = JSON.parse(localStorage.getItem('role_permissions_v19'))?.[role] || {};
+  const modules = [
+    { id: 'list', label: 'Contratos', icon: '📋' },
+    { id: 'form', label: 'Nuevo Contrato', icon: '➕' },
+    { id: 'me2n', label: 'Purchase Orders', icon: '🛒' },
+    { id: 'idx', label: 'Índices', icon: '📊' },
+    { id: 'licit', label: 'Licitaciones', icon: '📋' },
+    { id: 'prov', label: 'Proveedores', icon: '🏢' },
+    { id: 'users', label: 'Usuarios', icon: '👥' }
+  ];
+  let html = '<div class="sb-sec">Módulos</div>';
+  modules.forEach(m => {
+    if (perms[m.id] !== false) {
+      html += `<a class="nv" data-mod="${m.id}" href="#"><span class="ni">${m.icon}</span><span>${m.label}</span></a>`;
+    }
+  });
+  nav.innerHTML = html;
+  nav.querySelectorAll('[data-mod]').forEach(link => {
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      navigateTo(link.dataset.mod);
+    });
+  });
 }
 
 export function navigateTo(viewName) {
@@ -31,16 +52,12 @@ export function navigateTo(viewName) {
     toast(`Vista "${viewName}" no encontrada`, 'er');
     return;
   }
-  
   const container = document.getElementById('appContainer');
   const titleEl = document.getElementById('pgT');
   const actionsEl = document.getElementById('pgA');
-  
   titleEl.innerHTML = views[viewName].title;
   actionsEl.innerHTML = '';
-  
   views[viewName].render(container, actionsEl);
-  
   document.querySelectorAll('.sb-nav .nv').forEach(el => el.classList.remove('act'));
   document.querySelector(`.sb-nav .nv[data-mod="${viewName}"]`)?.classList.add('act');
 }

@@ -2,6 +2,22 @@
 
 Sistema de gestión de contratos completamente refactorizado con arquitectura modular.
 
+## 🚀 DEPLOY RÁPIDO (Sin instalar nada)
+
+### GitHub Pages (Recomendado)
+1. Sube archivos a GitHub (arrastra y suelta en web)
+2. Settings → Pages → Deploy from branch: main
+3. Espera 2 min → `https://TU_USUARIO.github.io/contratos-ta-refactor`
+
+### Netlify Drop
+1. https://app.netlify.com/drop
+2. Arrastra carpeta completa
+3. Listo → URL automática
+
+Ver **[DEPLOY.md](DEPLOY.md)** para detalles completos.
+
+---
+
 ## 🎯 Mejoras vs Original
 
 ### Arquitectura

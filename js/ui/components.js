@@ -64,3 +64,33 @@ APP.ui.modal = {
     // TODO: Cerrar modal actual
   }
 };
+
+// ═══════════════════════════════════════════════════════════════════
+// FUNCIONES GLOBALES - Compatibilidad con bundle.js
+// ═══════════════════════════════════════════════════════════════════
+
+function showLoader(msg) {
+  APP.ui.loader.show(msg);
+}
+
+function hideLoader() {
+  APP.ui.loader.hide();
+}
+
+function toast(msg, type) {
+  if (type === 'ok') APP.ui.toast.success(msg);
+  else if (type === 'er') APP.ui.toast.error(msg);
+  else if (type === 'warn') APP.ui.toast.warning(msg);
+  else APP.ui.toast.info(msg);
+}
+
+function go(page) {
+  if (APP.router && APP.router.go) {
+    APP.router.go(page);
+  }
+}
+
+function setSBStatus(ok) {
+  STATE.supabaseOK = ok;
+  // TODO: Actualizar badge visual si existe
+}

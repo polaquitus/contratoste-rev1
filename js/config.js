@@ -121,7 +121,30 @@ window.APP = {
 // Auto-inicializar
 APP.init();
 
-// Alias cortos para desarrollo (opcional, se pueden quitar en producción)
+// ═══════════════════════════════════════════════════════════════════
+// BRIDGE DE COMPATIBILIDAD - Para bundle.js original
+// ═══════════════════════════════════════════════════════════════════
+
+// Variables globales que bundle.js espera (sin window.)
+var DB = [];
+var ME2N = {};
+var IDX_STORE = {};
+var LICIT_DB = [];
+var PROV_DB = [];
+var SB_OK = false;
+var editId = null;
+var detId = null;
+var _idxSel = null;
+var files = [];
+var poDetOA = null;
+
+// Sync con APP.data cuando se actualicen
+Object.defineProperty(window, 'DB', {
+  get: () => DATA.contratos,
+  set: (val) => { DATA.contratos = val; }
+});
+
+// Alias cortos para desarrollo
 const DATA = APP.data;
 const STATE = APP.state;
 const CONFIG = APP.config;

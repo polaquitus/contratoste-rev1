@@ -3,13 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Gestión de Contratos TA</title>
+<title>Gestión de Contratos TA v0.222</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>⚡</text></svg>">
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css?v=221">
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<meta http-equiv="Pragma" content="no-cache">
-<meta http-equiv="Expires" content="0">
+<link rel="stylesheet" href="css/styles.css?v=222">
 </head>
 <body class="auth-locked">
 <div class="app">
@@ -199,12 +196,18 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://unpkg.com/mammoth/mammoth.browser.min.js"></script>
 
-<!-- Modular Architecture -->
-<script src="js/config.js?v=221"></script>
-<script src="js/storage.js?v=221"></script>
-<script src="js/auth.js?v=221"></script>
-<script src="js/ui.js?v=221"></script>
-<script src="js/bundle.js?v=221"></script>
-<script src="js/app.js?v=221"></script>
+<!-- HYBRID ARCHITECTURE - Refactored Core + Original Business Logic -->
+<script defer src="js/config.js?v=222"></script>
+<script defer src="js/core/events.js?v=222"></script>
+<script defer src="js/core/router.js?v=222"></script>
+<script defer src="js/core/validator.js?v=222"></script>
+<script defer src="js/core/errors.js?v=222"></script>
+<script defer src="js/data/supabase.js?v=222"></script>
+<script defer src="js/data/storage.js?v=222"></script>
+<script defer src="js/data/cache.js?v=222"></script>
+<script defer src="js/auth/login.js?v=222"></script>
+<script defer src="js/ui/components.js?v=222"></script>
+<script defer src="js/bundle.js?v=222"></script>
+<script defer src="js/app.js?v=222"></script>
 </body>
 </html>

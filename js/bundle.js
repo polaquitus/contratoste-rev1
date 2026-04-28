@@ -11,21 +11,11 @@
 // - Módulo de Índices Económicos
 // - Proveedores
 // - Licitaciones
-// - Purchase Orders (ME2N)
+// - Purchase Orders (window.ME2N)
 // - Usuarios
 //
-// Aliases para compatibilidad con variables globales de config.js:
-const DB = window._DB;
-const ME2N = window.ME2N;
-const IDX_STORE = window.IDX_STORE;
-const LICIT_DB = window.LICIT_DB;
-const PROV_DB = window.PROV_DB;
-let SB_OK = window.SB_OK;
-let editId = window.editId;
-let detId = window.detId;
-let _idxSel = window._idxSel;
-let files = window.files;
-let poDetOA = window.poDetOA;
+// NOTA: Este código usa las variables globales definidas en config.js
+// Acceso directo vía window.VARIABLE o var VARIABLE (sin const/let para evitar redeclaración)
 
 // ════════════════════════════════════════════════════════════════════
 
@@ -36,12 +26,12 @@ function loadIdx() { /* handled by initApp */ }
 function loadLicit() { /* handled by initApp */ }
 async function loadProv() {
   // Try Supabase first
-  if (SB_OK) {
+  if (window.SB_OK) {
     // Attempt 1: table 'contratistas' with native columns (id, vendor_num, nombre, email, telefono, rubro, payload, active)
     try {
       const rows = await sbFetch('contratistas', 'GET', null, '?select=id,vendor_num,nombre,email,telefono,rubro,payload,active&active=eq.true&order=nombre.asc&limit=5000');
       if (Array.isArray(rows) && rows.length) {
-        PROV_DB = rows.map(r => {
+        window.PROV_DB = rows.map(r => {
           let extra = {};
           try { extra = (typeof r.payload === 'object' ? r.payload : JSON.parse(r.payload || '{}')) || {}; } catch(e) {}
           return {
@@ -56,8 +46,8 @@ async function loadProv() {
             ...extra
           };
         });
-        localStorage.setItem('contr_v1', JSON.stringify(PROV_DB));
-        localStorage.setItem('prov_v1', JSON.stringify(PROV_DB));
+        localStorage.setItem('contr_v1', JSON.stringify(window.PROV_DB));
+        localStorage.setItem('prov_v1', JSON.stringify(window.PROV_DB));
         updNav(); if(typeof updNavProv==='function') updNavProv();
         return;
       }
@@ -68,10 +58,10 @@ async function loadProv() {
     try {
       const rows2 = await sbFetch('contratistas', 'GET', null, '?select=id,datos&order=id.asc&limit=5000');
       if (Array.isArray(rows2) && rows2.length && rows2[0].datos !== undefined) {
-        PROV_DB = rows2.map(r => { try { const o = JSON.parse(r.datos); o.__sbId = r.id; return o; } catch(e){ return null; } }).filter(Boolean);
-        if (PROV_DB.length) {
-          localStorage.setItem('contr_v1', JSON.stringify(PROV_DB));
-          localStorage.setItem('prov_v1', JSON.stringify(PROV_DB));
+        window.PROV_DB = rows2.map(r => { try { const o = JSON.parse(r.datos); o.__sbId = r.id; return o; } catch(e){ return null; } }).filter(Boolean);
+        if (window.PROV_DB.length) {
+          localStorage.setItem('contr_v1', JSON.stringify(window.PROV_DB));
+          localStorage.setItem('prov_v1', JSON.stringify(window.PROV_DB));
           updNav(); if(typeof updNavProv==='function') updNavProv();
           return;
         }
@@ -81,10 +71,10 @@ async function loadProv() {
     }
     // Attempt 3: legacy 'proveedores' table
     try {
-      PROV_DB = await sbLoadTable('proveedores');
-      if (PROV_DB.length) {
-        localStorage.setItem('contr_v1', JSON.stringify(PROV_DB));
-        localStorage.setItem('prov_v1', JSON.stringify(PROV_DB));
+      window.PROV_DB = await sbLoadTable('proveedores');
+      if (window.PROV_DB.length) {
+        localStorage.setItem('contr_v1', JSON.stringify(window.PROV_DB));
+        localStorage.setItem('prov_v1', JSON.stringify(window.PROV_DB));
         updNav(); if(typeof updNavProv==='function') updNavProv();
         return;
       }
@@ -94,14 +84,14 @@ async function loadProv() {
   }
   // Fallback: localStorage
   try {
-    PROV_DB = JSON.parse(localStorage.getItem('contr_v1')) || JSON.parse(localStorage.getItem('prov_v1')) || [];
-  } catch(e){ PROV_DB = []; }
+    window.PROV_DB = JSON.parse(localStorage.getItem('contr_v1')) || JSON.parse(localStorage.getItem('prov_v1')) || [];
+  } catch(e){ window.PROV_DB = []; }
   updNav(); if(typeof updNavProv==='function') updNavProv();
 }
 
 async function save() {
-  if (!SB_OK) { localStorage.setItem('cta_v7', JSON.stringify(DB)); return; }
-  const target = editId ? DB.find(x=>x.id===editId) : (detId ? DB.find(x=>x.id===detId) : DB[DB.length-1]);
+  if (!window.SB_OK) { localStorage.setItem('cta_v7', JSON.stringify(window._DB)); return; }
+  const target = window.editId ? window._DB.find(x=>x.id===window.editId) : (window.detId ? window._DB.find(x=>x.id===window.detId) : window._DB[window._DB.length-1]);
   if (target) {
     console.log('[SAVE] Guardando contrato:', target.num, 'tarifarios:', (target.tarifarios||[]).length, '__sbId:', target.__sbId);
     await sbUpsertItem('contratos', target);
@@ -110,38 +100,38 @@ async function save() {
 }
 
 async function saveMe2n() {
-  if (!SB_OK) { localStorage.setItem('me2n_v1', JSON.stringify(ME2N)); return; }
-  await sbUpsertSingle('me2n', ME2N);
+  if (!window.SB_OK) { localStorage.setItem('me2n_v1', JSON.stringify(window.ME2N)); return; }
+  await sbUpsertSingle('me2n', window.ME2N);
 }
 
 // saveIdx defined in IDX module below — always mirrors localStorage + Supabase when available
 
 async function saveLicit() {
-  if (!SB_OK) { localStorage.setItem('licit_v1', JSON.stringify(LICIT_DB)); return; }
-  const last = LICIT_DB[LICIT_DB.length-1];
+  if (!window.SB_OK) { localStorage.setItem('licit_v1', JSON.stringify(window.LICIT_DB)); return; }
+  const last = window.LICIT_DB[window.LICIT_DB.length-1];
   if (last) await sbUpsertItem('licitaciones', last);
 }
 
 async function saveProv() {
-  localStorage.setItem('contr_v1', JSON.stringify(PROV_DB));
-  localStorage.setItem('prov_v1', JSON.stringify(PROV_DB));
-  if (!SB_OK) return;
+  localStorage.setItem('contr_v1', JSON.stringify(window.PROV_DB));
+  localStorage.setItem('prov_v1', JSON.stringify(window.PROV_DB));
+  if (!window.SB_OK) return;
   await sbReplaceContratistas();
 }
 
 async function sbReplaceContratistas() {
-  if (!SB_OK) return;
-  const clean = (PROV_DB||[]).map(p=>{ const x={...p}; delete x.__sbId; return {datos: JSON.stringify(x)}; });
+  if (!window.SB_OK) return;
+  const clean = (window.PROV_DB||[]).map(p=>{ const x={...p}; delete x.__sbId; return {datos: JSON.stringify(x)}; });
   try { await sbFetch('contratistas', 'DELETE', null, '?id=not.is.null'); } catch(e) { console.warn('DELETE contratistas', e); }
   if (!clean.length) return;
   const res = await sbFetch('contratistas', 'POST', clean);
-  if (Array.isArray(res)) res.forEach((r,i)=>{ if(PROV_DB[i]) PROV_DB[i].__sbId = r.id; });
-  localStorage.setItem('contr_v1', JSON.stringify(PROV_DB));
-  localStorage.setItem('prov_v1', JSON.stringify(PROV_DB));
+  if (Array.isArray(res)) res.forEach((r,i)=>{ if(window.PROV_DB[i]) window.PROV_DB[i].__sbId = r.id; });
+  localStorage.setItem('contr_v1', JSON.stringify(window.PROV_DB));
+  localStorage.setItem('prov_v1', JSON.stringify(window.PROV_DB));
 }
 
 
-function updNav(){document.getElementById('cnt').textContent=DB.length;document.getElementById('poCnt').textContent=Object.keys(ME2N).length;document.getElementById('provCnt').textContent=PROV_DB.length;}
+function updNav(){document.getElementById('cnt').textContent=window._DB.length;document.getElementById('poCnt').textContent=Object.keys(window.ME2N).length;document.getElementById('provCnt').textContent=window.PROV_DB.length;}
 
 (function(){ initApp(); })();
 
@@ -222,15 +212,15 @@ function getIndicatorSnapshots(code){
   function seedSnapshotsFromIdxStore(targetCode){
     try{
       var idxId = labelToIdxId(targetCode);
-      if(!idxId || typeof IDX_STORE==='undefined' || !IDX_STORE[idxId] || !Array.isArray(IDX_STORE[idxId].rows)) return;
+      if(!idxId || typeof window.IDX_STORE==='undefined' || !window.IDX_STORE[idxId] || !Array.isArray(window.IDX_STORE[idxId].rows)) return;
       var snaps = JSON.parse(localStorage.getItem('indicator_snapshots')||'[]');
       var changed = false;
-      IDX_STORE[idxId].rows.forEach(function(r){
+      window.IDX_STORE[idxId].rows.forEach(function(r){
         if(!r || !r.ym) return;
         var snapDate = r.ym + '-01';
         var exists = snaps.find(function(s){ return s.indicator_code===targetCode && s.snapshot_date===snapDate; });
         if(!exists){
-          snaps.push({indicator_code: targetCode,snapshot_date: snapDate,pct: r.pct!=null ? Number(r.pct) : null,value: r.value!=null ? Number(r.value) : null,series_value: r.value!=null ? Number(r.value) : null,source: 'IDX_STORE',confirmed: !!r.confirmed,note: r.note || ''});
+          snaps.push({indicator_code: targetCode,snapshot_date: snapDate,pct: r.pct!=null ? Number(r.pct) : null,value: r.value!=null ? Number(r.value) : null,series_value: r.value!=null ? Number(r.value) : null,source: 'window.IDX_STORE',confirmed: !!r.confirmed,note: r.note || ''});
           changed = true;
         }
       });
@@ -298,13 +288,13 @@ function go(v){
     _navAct('list');
     t.innerHTML='📋 Contratos';
     a.innerHTML=`<div style="display:flex;gap:8px"><button class="btn btn-s btn-sm" onclick="importMe3nModal()">📤 Importar ME3N (SAP)</button><button class="btn btn-p" onclick="go('form')">➕ Nuevo Contrato</button></div>`;
-    editId=null;
+    window.editId=null;
     resetForm();
   }
   else if(v==='form'){
     document.getElementById('vForm').classList.add('on');
     _navAct('form');
-    t.innerHTML=(editId?'✏️ Editar':'➕ Nuevo')+' Contrato';
+    t.innerHTML=(window.editId?'✏️ Editar':'➕ Nuevo')+' Contrato';
     a.innerHTML=`<button class="btn btn-s" onclick="go('list')">← Volver</button>`;
     populateProvSelect();
     window.scrollTo({top:0,behavior:'smooth'});
@@ -320,7 +310,7 @@ function go(v){
   else if(v==='me2n'){
     document.getElementById('vMe2n').classList.add('on');
     _navAct('me2n');
-    t.innerHTML='🛒 Purchase Orders (ME2N)';
+    t.innerHTML='🛒 Purchase Orders (window.ME2N)';
     a.innerHTML='';
     renderMe2n();
     buildPlantFilter();
@@ -343,14 +333,14 @@ function go(v){
     document.getElementById('vProv').classList.add('on');
     _navAct('prov');
     t.innerHTML='🏢 Proveedores';
-    a.innerHTML=`<div style="display:flex;gap:8px"><button class="btn btn-s btn-sm" onclick="importProvModal()">📤 Importar SAP</button><button class="btn btn-s btn-sm" onclick="loadProv().then(function(){renderProv();toast(PROV_DB.length+' proveedores','ok');}).catch(function(e){toast('Error: '+e.message,'er');})">🔄 Recargar</button><button class="btn btn-p btn-sm" onclick="openProvModal(null)">➕ Nuevo Proveedor</button></div>`;
+    a.innerHTML=`<div style="display:flex;gap:8px"><button class="btn btn-s btn-sm" onclick="importProvModal()">📤 Importar SAP</button><button class="btn btn-s btn-sm" onclick="loadProv().then(function(){renderProv();toast(window.PROV_DB.length+' proveedores','ok');}).catch(function(e){toast('Error: '+e.message,'er');})">🔄 Recargar</button><button class="btn btn-p btn-sm" onclick="openProvModal(null)">➕ Nuevo Proveedor</button></div>`;
     loadProv().then(function(){renderProv();}).catch(function(){renderProv();});
   }
   else if(v==='me2ndet'){
     document.getElementById('vMe2nDet').classList.add('on');
     _navAct('me2n');
     t.innerHTML='🛒 Detalle PO por Contrato';
-    a.innerHTML=`<button class="btn btn-s" onclick="go('me2n')">← Volver a ME2N</button>`;
+    a.innerHTML=`<button class="btn btn-s" onclick="go('me2n')">← Volver a window.ME2N</button>`;
     renderMe2nDet();
     window.scrollTo({top:0,behavior:'smooth'});
   }
@@ -367,9 +357,9 @@ function getPoly(){let a=[];for(let i=1;i<=5;i++)a.push({idx:document.getElement
 function setPoly(a){if(!a)return;a.forEach((p,i)=>{if(i<5){document.getElementById('p_i'+(i+1)).value=p.idx||'';document.getElementById('p_n'+(i+1)).value=p.inc||'';document.getElementById('p_b'+(i+1)).value=p.base||'';}});calcP();}
 
 function onContrCh(){const v=gv('f_tcontr');document.getElementById('secRfq').classList.toggle('vis',v==='RFQ MAIL'||v==='RFQ ARIBA');document.getElementById('secAr').classList.toggle('vis',v==='RFQ ARIBA');}
-function handleFiles(fl){for(const f of fl){if(files.length>=10)return;const r=new FileReader();r.onload=e=>{files.push({name:f.name,size:f.size,data:e.target.result});renderFL()};r.readAsDataURL(f);}}
-function rmFile(i){files.splice(i,1);renderFL();}
-function renderFL(){document.getElementById('fList').innerHTML=files.map((f,i)=>`<div class="fli"><span>📄</span><span class="fn">${f.name}</span><span class="fs">${(f.size/1024).toFixed(0)}KB</span><button class="fd" onclick="rmFile(${i})">✕</button></div>`).join('');}
+function handleFiles(fl){for(const f of fl){if(window.files.length>=10)return;const r=new FileReader();r.onload=e=>{window.files.push({name:f.name,size:f.size,data:e.target.result});renderFL()};r.readAsDataURL(f);}}
+function rmFile(i){window.files.splice(i,1);renderFL();}
+function renderFL(){document.getElementById('fList').innerHTML=window.files.map((f,i)=>`<div class="fli"><span>📄</span><span class="fn">${f.name}</span><span class="fs">${(f.size/1024).toFixed(0)}KB</span><button class="fd" onclick="rmFile(${i})">✕</button></div>`).join('');}
 function gv(id){return(document.getElementById(id).value||'').trim();}
 
 // SAVE
@@ -392,7 +382,7 @@ async function guardar(){
   }
   if(gv('f_tcontr')==='RFQ ARIBA'&&!gv('f_ariba')){document.getElementById('f_ariba').classList.add('err');er.push('ID Ariba');}
   if(gv('f_ini')&&gv('f_fin')&&new Date(gv('f_fin'))<new Date(gv('f_ini'))){document.getElementById('f_fin').classList.add('err');er.push('Fecha Fin anterior a Inicio');}
-  if(!editId&&gv('f_num')&&DB.find(c=>c.num===gv('f_num'))){document.getElementById('f_num').classList.add('err');er.push('N° de contrato ya existe');}
+  if(!window.editId&&gv('f_num')&&window._DB.find(c=>c.num===gv('f_num'))){document.getElementById('f_num').classList.add('err');er.push('N° de contrato ya existe');}
   if(er.length){
     // Show persistent error banner at top of form
     const banner=document.createElement('div');
@@ -407,10 +397,10 @@ async function guardar(){
     return;
   }
 
-  const old=editId?DB.find(x=>x.id===editId):null;
+  const old=window.editId?window._DB.find(x=>x.id===window.editId):null;
   const c={
     ...(old||{}),
-    id:editId||Date.now().toString(36)+Math.random().toString(36).substr(2,5),
+    id:window.editId||Date.now().toString(36)+Math.random().toString(36).substr(2,5),
     num:gv('f_num'),cont:gv('f_cont'),tipo:gv('f_tipo'),mon:gv('f_mon'),
     monto:parseFloat(gv('f_monto'))||0,fechaIni:gv('f_ini'),fechaFin:gv('f_fin'),
     resp:gv('f_resp'),btar:gv('f_btar'),det:gv('f_det'),
@@ -422,7 +412,7 @@ async function guardar(){
     sq:document.getElementById('f_sq').checked,dg:document.getElementById('f_dg').checked,
     rtec:gv('f_rtec'),tc:parseFloat(gv('f_tc'))||1,own:gv('f_own')||null,asset:gv('f_asset')||null,
     cprov:gv('f_cprov'),vend:gv('f_vend')||null,fax:gv('f_fax')||null,
-    adj:files.map(f=>({name:f.name,size:f.size,data:f.data})),
+    adj:window.files.map(f=>({name:f.name,size:f.size,data:f.data})),
     com:gv('f_com')||null,
     // Anticipo (solo para OBRA)
     anticipoPct:gv('f_tipo')==='OBRA'?(parseFloat(gv('f_anticipoPct'))||0):0,
@@ -462,8 +452,8 @@ async function guardar(){
     B:{ enabled: !!c.trigB, threshold: Number(c.trigBpct)||0 },
     C:{ enabled: !!c.trigC, months: Number(c.trigCmes)||0 }
   };
-  if(editId){const i=DB.findIndex(x=>x.id===editId);if(i!==-1)DB[i]=c;editId=null;toast('Actualizado','ok');}
-  else{DB.push(c);toast('Contrato creado','ok');}
+  if(window.editId){const i=window._DB.findIndex(x=>x.id===window.editId);if(i!==-1)window._DB[i]=c;window.editId=null;toast('Actualizado','ok');}
+  else{window._DB.push(c);toast('Contrato creado','ok');}
   try{
     if(c.trigB||c.trigC){
       PolUpdate.saveConditions(c.id,{
@@ -503,14 +493,14 @@ function resetForm(){
   document.getElementById('f_trigA').checked=false;document.getElementById('l_trigA').textContent='No';
   document.getElementById('f_trigB').checked=false;document.getElementById('l_trigB').textContent='No';document.getElementById('trigB_pct').style.display='none';
   document.getElementById('f_trigC').checked=false;document.getElementById('l_trigC').textContent='No';document.getElementById('trigC_mes').style.display='none';
-  buildPoly();files=[];renderFL();
+  buildPoly();window.files=[];renderFL();
   populateProvSelect();
 }
 function populateProvSelect(){
   const sel=document.getElementById('f_cont');
   if(!sel)return;
   sel.innerHTML='<option value="">Seleccionar contratista</option>';
-  const sorted=[...PROV_DB].sort((a,b)=>{
+  const sorted=[...window.PROV_DB].sort((a,b)=>{
     const nameA=(a.name||a.nombre||'').toUpperCase();
     const nameB=(b.name||b.nombre||'').toUpperCase();
     return nameA.localeCompare(nameB);
@@ -523,7 +513,7 @@ function populateProvSelect(){
   });
 }
 function cancelForm(){
-  editId=null;
+  window.editId=null;
   document.getElementById('formErrBanner')?.remove();
   resetForm();
   go('list');
@@ -564,7 +554,7 @@ function renderList(){
   const fDom=document.getElementById('fDom')?.value||'';
   const fResp=document.getElementById('fResp')?.value||'';
   const fOwn=document.getElementById('fOwn')?.value||'';
-  let arr=DB.filter(c=>{
+  let arr=window._DB.filter(c=>{
     const fin=new Date(c.fechaFin+'T00:00:00');const est=fin>=hoy?'ACTIVO':'VENCIDO';
     if(fE&&est!==fE)return false;
     if(srch&&!c.num.toLowerCase().includes(srch)&&!c.cont.toLowerCase().includes(srch))return false;
@@ -575,8 +565,8 @@ function renderList(){
     if(fOwn&&c.own!==fOwn)return false;
     return true;
   });
-  document.getElementById('lcnt').textContent=arr.length+'/'+DB.length;
-  if(!arr.length){box.innerHTML=DB.length?'<div class="empty"><div class="ei">🔍</div><p>Sin resultados.</p></div>':'<div class="empty"><div class="ei">📄</div><p>No hay contratos. Hacé clic en <strong>Nuevo Contrato</strong>.</p></div>';return;}
+  document.getElementById('lcnt').textContent=arr.length+'/'+window._DB.length;
+  if(!arr.length){box.innerHTML=window._DB.length?'<div class="empty"><div class="ei">🔍</div><p>Sin resultados.</p></div>':'<div class="empty"><div class="ei">📄</div><p>No hay contratos. Hacé clic en <strong>Nuevo Contrato</strong>.</p></div>';return;}
   let h='<div style="overflow-x:auto"><table><thead><tr><th>N° Ctto</th><th>Proveedor</th><th>Monto Total</th><th>Consumido (POs)</th><th>Remanente</th><th>% Disponible</th><th>Inicio</th><th>Fin</th><th>Estado</th><th>Completitud</th><th style="width:50px"></th></tr></thead><tbody>';
   for(const c of arr){
     const fin=new Date(c.fechaFin+'T00:00:00'),isA=fin>=hoy,tot=getTotal(c);
@@ -592,13 +582,13 @@ function renderList(){
   h+='</tbody></table></div>';box.innerHTML=h;
 }
 
-function verDet(id){detId=id;go('detail');}
+function verDet(id){window.detId=id;go('detail');}
 
 function purgeDB(){
-  if(!DB.length){toast('Base vacía','er');return;}
-  if(!confirm('⚠️ ¿Eliminar TODOS los contratos ('+DB.length+')? Esta acción no se puede deshacer.'))return;
-  if(!confirm('Confirmá por segunda vez: se borrarán '+DB.length+' contratos permanentemente.'))return;
-  DB=[];save();renderList();updNav();toast('Base de datos vaciada','ok');
+  if(!window._DB.length){toast('Base vacía','er');return;}
+  if(!confirm('⚠️ ¿Eliminar TODOS los contratos ('+window._DB.length+')? Esta acción no se puede deshacer.'))return;
+  if(!confirm('Confirmá por segunda vez: se borrarán '+window._DB.length+' contratos permanentemente.'))return;
+  window._DB=[];save();renderList();updNav();toast('Base de datos vaciada','ok');
 }
 
 // DETAIL
@@ -630,7 +620,7 @@ function showTarTab(i){ document.querySelectorAll('.tar-tab').forEach((e,idx)=>e
 
 function renderDossierHtml(c){
   var enms=c.enmiendas||[],tars=c.tarifarios||[],aves=c.aves||[];
-  var licit=(typeof LICIT_DB!=='undefined'?LICIT_DB:[]).find(function(l){return l.contrato===c.num;})||null;
+  var licit=(typeof window.LICIT_DB!=='undefined'?window.LICIT_DB:[]).find(function(l){return l.contrato===c.num;})||null;
   var _e=function(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');};
   var _m=function(n){if(!n&&n!==0)return '\u2014';return new Intl.NumberFormat('es-AR',{minimumFractionDigits:0,maximumFractionDigits:0}).format(Math.round(n));};
   var _d=function(s){if(!s)return '\u2014';var p=s.split('-');return p.length===3?p[2]+'/'+p[1]+'/'+p[0]:s;};
@@ -757,11 +747,11 @@ function renderDossierHtml(c){
 +'</div>'
 +'</body></html>';
 }
-function openDossier(){ const c=DB.find(x=>x.id===detId); if(!c){toast('No se encontró el contrato','er');return;} const w=window.open('','_blank'); if(!w){toast('Bloqueador de pop-ups activo','er');return;} w.document.open(); w.document.write(renderDossierHtml(c)); w.document.close(); }
+function openDossier(){ const c=window._DB.find(x=>x.id===window.detId); if(!c){toast('No se encontró el contrato','er');return;} const w=window.open('','_blank'); if(!w){toast('Bloqueador de pop-ups activo','er');return;} w.document.open(); w.document.write(renderDossierHtml(c)); w.document.close(); }
 
 function renderDet(){
   try {
-    const c=DB.find(x=>x.id===detId);if(!c){go('list');return;}
+    const c=window._DB.find(x=>x.id===window.detId);if(!c){go('list');return;}
     const hoy=new Date();hoy.setHours(0,0,0,0);
     const fin=new Date((c.fechaFin||'1970-01-01')+'T00:00:00'),isA=fin>=hoy;
     const aves=c.aves||[],enms=c.enmiendas||[];
@@ -845,7 +835,7 @@ function renderDet(){
           <button class="btn btn-p btn-sm" onclick="openEnmPanel()">📑 + Nueva Enmienda</button>
           <button class="btn btn-s btn-sm" onclick="openEnmImportPicker()">🤖 Importar PDF/DOC con IA</button>
           <button class="btn btn-d btn-sm" onclick="resetSection('enmiendas')">🗑 Reset</button>
-          <input type="file" id="enmPdfIn" accept=".pdf,.docx,.doc" multiple style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" onchange="importEnmPdfs(this.files)">
+          <input type="file" id="enmPdfIn" accept=".pdf,.docx,.doc" multiple style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" onchange="importEnmPdfs(this.window.files)">
         </div>
         <div class="enm-panel" id="enmPanel">
           <div class="cond-tag">📑 Nueva Enmienda — N°${enms.length+1}</div>
@@ -1036,8 +1026,8 @@ function renderDet(){
       </div>
       
       ${c.tipo==='OBRA'?(()=>{
-        // Obtener POs asociadas a este contrato desde ME2N
-        const poData=ME2N[c.num];
+        // Obtener POs asociadas a este contrato desde window.ME2N
+        const poData=window.ME2N[c.num];
         const pos=poData&&Array.isArray(poData)&&Array.isArray(poData[2])?poData[2]:[];
         const totalCerts=pos.reduce((s,p)=>s+(p[3]||0),0); // p[3] = Net Order Value
         const avancePct=montoBase>0?round2((totalCerts/montoBase)*100):0;
@@ -1098,16 +1088,16 @@ function renderDet(){
 }
 
 // ===== TARIFARIO SYSTEM =====
-function getTar(){const c=DB.find(x=>x.id===detId);return c?.tarifarios||[];}
-async function setTar(t){const c=DB.find(x=>x.id===detId);if(c){c.tarifarios=t;c.updatedAt=new Date().toISOString();save();}}
+function getTar(){const c=window._DB.find(x=>x.id===window.detId);return c?.tarifarios||[];}
+async function setTar(t){const c=window._DB.find(x=>x.id===window.detId);if(c){c.tarifarios=t;c.updatedAt=new Date().toISOString();save();}}
 
 async function saveTarifarios(){
-  const c=DB.find(x=>x.id===detId);
+  const c=window._DB.find(x=>x.id===window.detId);
   if(!c){toast('No hay contrato seleccionado','er');return;}
   try{
     showLoader('Guardando tarifarios...');
     c.updatedAt=new Date().toISOString();
-    if(!SB_OK){localStorage.setItem('cta_v7',JSON.stringify(DB));hideLoader();toast('Guardado en localStorage','ok');return;}
+    if(!window.SB_OK){localStorage.setItem('cta_v7',JSON.stringify(window._DB));hideLoader();toast('Guardado en localStorage','ok');return;}
     await sbUpsertItem('contratos',c);
     hideLoader();
     toast(`${(c.tarifarios||[]).length} tarifario(s) guardado(s) en Supabase ✓`,'ok');
@@ -1120,7 +1110,7 @@ async function saveTarifarios(){
 
 
 function addTarTable(){
-  const c=DB.find(x=>x.id===detId);if(!c)return;
+  const c=window._DB.find(x=>x.id===window.detId);if(!c)return;
   const name=prompt('Nombre de la tabla:','Tabla '+(getTar().length+1));if(!name)return;
   if(!c.tarifarios)c.tarifarios=[];
   c.tarifarios.push({name,cols:['N° Item','Descripción','Categoría','Unidad','Valor Unitario'],rows:[['','','','','']]});
@@ -1167,13 +1157,13 @@ function editTarCell(ti,ri,ci,val){
 }
 
 function importTarExcel(input){
-  const file=input.files[0];if(!file)return;
+  const file=input.window.files[0];if(!file)return;
   const reader=new FileReader();
   reader.onload=function(e){
     try{
       const data=new Uint8Array(e.target.result);
       const wb=XLSX.read(data,{type:'array'});
-      const c=DB.find(x=>x.id===detId);if(!c)return;
+      const c=window._DB.find(x=>x.id===window.detId);if(!c)return;
       if(!c.tarifarios)c.tarifarios=[];
       wb.SheetNames.forEach(sn=>{
         const ws=wb.Sheets[sn];
@@ -1329,12 +1319,12 @@ async function parsePriceListExcelFile(file, cc){
   });
   return out;
 }
-async function importPriceListsFromFiles(files){
-  if(!files||!files.length) return;
-  const cc=DB.find(x=>x.id===detId); if(!cc){toast('No hay contrato seleccionado','er');return;}
+async function importPriceListsFromFiles(window.files){
+  if(!window.files||!window.files.length) return;
+  const cc=window._DB.find(x=>x.id===window.detId); if(!cc){toast('No hay contrato seleccionado','er');return;}
   const imported=[]; const errors=[];
   try{ if(typeof showLoader==='function') showLoader('Analizando listas de precios...'); }catch(e){}
-  for(const file of Array.from(files)){
+  for(const file of Array.from(window.files)){
     const ext=(file.name.split('.').pop()||'').toLowerCase();
     try{
       if(['xls','xlsx'].includes(ext)){
@@ -1370,7 +1360,7 @@ async function importPriceListsFromFiles(files){
   cc.tarifarios=current;
   cc.updatedAt=new Date().toISOString();
   console.log('[importPriceListsFromFiles] Importadas', imported.length, 'listas. Total tarifarios:', cc.tarifarios.length);
-  if(!SB_OK){localStorage.setItem('cta_v7',JSON.stringify(DB));}
+  if(!window.SB_OK){localStorage.setItem('cta_v7',JSON.stringify(window._DB));}
   else{await sbUpsertItem('contratos',cc);console.log('[importPriceListsFromFiles] ✓ Guardado en Supabase');}
   renderTarifario();
   const msg=`${imported.length} ${imported.length===1?'lista importada':'listas importadas'}${errors.length?` · ${errors.length} archivo(s) con error`:''}`;
@@ -1385,7 +1375,7 @@ function openEnmPanel(){
   const panel = document.getElementById('enmPanel');
   if(!panel){ toast('No se encontró el panel de enmiendas', 'er'); return; }
   panel.classList.add('vis');
-  const c = DB.find(x=>x.id===detId);
+  const c = window._DB.find(x=>x.id===window.detId);
   const nextNum = ((c?.enmiendas)||[]).length + 1;
   const numEl = document.getElementById('ne_num');
   if(numEl) numEl.value = nextNum;
@@ -1430,7 +1420,7 @@ function onAveSubChange(){}
 
 // POLY AVE CALC
 function calcPolyAve(){
-  const c=DB.find(x=>x.id===detId);if(!c)return;
+  const c=window._DB.find(x=>x.id===window.detId);if(!c)return;
   const pct=parseFloat(document.getElementById('av_pct').value)||0;
   const desde=document.getElementById('av_desde').value;
   if(!pct||!desde){document.getElementById('av_calc').value='';return;}
@@ -1453,13 +1443,13 @@ function usarCalcPoly(){
 
 function delAve(aid){
   if(!confirm('¿Eliminar este AVE?'))return;
-  const c=DB.find(x=>x.id===detId);if(!c)return;
+  const c=window._DB.find(x=>x.id===window.detId);if(!c)return;
   c.aves=(c.aves||[]).filter(a=>a.id!==aid);
   c.updatedAt=new Date().toISOString();
   save();renderDet();renderList();toast('AVE eliminado','ok');
 }
 
-function editCont(id){const c=DB.find(x=>x.id===id);if(!c)return;editId=id;
+function editCont(id){const c=window._DB.find(x=>x.id===id);if(!c)return;window.editId=id;
   populateProvSelect();
   setTimeout(function(){
     document.getElementById('f_cont').value=c.cont||'';
@@ -1496,13 +1486,13 @@ function editCont(id){const c=DB.find(x=>x.id===id);if(!c)return;editId=id;
   document.getElementById('f_trigA').checked=!!c.trigA;document.getElementById('l_trigA').textContent=c.trigA?'Sí':'No';
   document.getElementById('f_trigB').checked=!!c.trigB;document.getElementById('l_trigB').textContent=c.trigB?'Sí':'No';document.getElementById('trigB_pct').style.display=c.trigB?'flex':'none';document.getElementById('f_trigBpct').value=c.trigBpct||'';
   document.getElementById('f_trigC').checked=!!c.trigC;document.getElementById('l_trigC').textContent=c.trigC?'Sí':'No';document.getElementById('trigC_mes').style.display=c.trigC?'flex':'none';document.getElementById('f_trigCmes').value=c.trigCmes||'';
-  files=(c.adj||[]).map(a=>({...a}));renderFL();go('form');
+  window.files=(c.adj||[]).map(a=>({...a}));renderFL();go('form');
 }
 
-async function delCont(id){if(!confirm('¿Eliminar contrato?'))return;const c=DB.find(x=>x.id===id);if(c&&SB_OK)await sbDeleteItem('contratos',c.__sbId);else if(!SB_OK)localStorage.setItem('cta_v7',JSON.stringify(DB));DB=DB.filter(x=>x.id!==id);renderList();updNav();toast('Eliminado','ok');if(detId===id)go('list');}
+async function delCont(id){if(!confirm('¿Eliminar contrato?'))return;const c=window._DB.find(x=>x.id===id);if(c&&window.SB_OK)await sbDeleteItem('contratos',c.__sbId);else if(!window.SB_OK)localStorage.setItem('cta_v7',JSON.stringify(window._DB));window._DB=window._DB.filter(x=>x.id!==id);renderList();updNav();toast('Eliminado','ok');if(window.detId===id)go('list');}
 
-// ===================== ME2N SYSTEM =====================
-// ME2N data structure: { "4600005730": ["VENDOR NAME", "EUR", [[po,YYYY-MM,plant,nov,still,nItems,shortText],...]], ... }
+// ===================== window.ME2N SYSTEM =====================
+// window.ME2N data structure: { "4600005730": ["VENDOR NAME", "EUR", [[po,YYYY-MM,plant,nov,still,nItems,shortText],...]], ... }
 
 const PLANT_MAP={
   'AR50':'APE - AR50','ARJ0':'LESC - ARJ0','AR20':'TDF - AR20','AR30':'PQ - AR30',
@@ -1512,15 +1502,15 @@ const PLANT_MAP={
 };
 function plantLabel(p){return PLANT_MAP[p]||p||'—';}
 
-// Get total consumed (sum of Net Order Value) for a contract number from ME2N
+// Get total consumed (sum of Net Order Value) for a contract number from window.ME2N
 function getConsumed(contractNum){
-  const d=ME2N[contractNum];
+  const d=window.ME2N[contractNum];
   if(!d)return null; // null = no data (not 0)
   return d[2].reduce((s,p)=>s+p[3],0);
 }
 
 function importMe2n(input){
-  const file=input.files[0];if(!file)return;
+  const file=input.window.files[0];if(!file)return;
   toast('Procesando Excel...','ok');
   const reader=new FileReader();
   reader.onload=function(e){
@@ -1566,7 +1556,7 @@ function importMe2n(input){
         if(pd.cu)result[oa][1]=pd.cu;
         result[oa][2].push([poNum,pd.dt,pd.pl,Math.round(pd.n*100)/100,Math.round(pd.s*100)/100,pd.ni,pd.st||'']);
       }
-      ME2N=result;
+      window.ME2N=result;
       saveMe2n();updNav();renderMe2n();buildPlantFilter();
       const nC=Object.keys(result).length,nP=Object.keys(poAgg).length;
       toast(nP+' POs en '+nC+' contratos cargados','ok');
@@ -1577,16 +1567,16 @@ function importMe2n(input){
 }
 
 function purgeMe2n(){
-  const n=Object.keys(ME2N).length;
-  if(!n){toast('Base ME2N vacía','er');return;}
-  if(!confirm('⚠️ ¿Eliminar toda la data ME2N ('+n+' contratos)?'))return;
-  ME2N={};saveMe2n();updNav();renderMe2n();toast('ME2N vaciado','ok');
+  const n=Object.keys(window.ME2N).length;
+  if(!n){toast('Base window.ME2N vacía','er');return;}
+  if(!confirm('⚠️ ¿Eliminar toda la data window.ME2N ('+n+' contratos)?'))return;
+  window.ME2N={};saveMe2n();updNav();renderMe2n();toast('window.ME2N vaciado','ok');
 }
 
 function buildPlantFilter(){
   const sel=document.getElementById('poPlant');if(!sel)return;
   const plants=new Set();
-  for(const[oa,d]of Object.entries(ME2N)){d[2].forEach(p=>{if(p[2])plants.add(p[2]);});}
+  for(const[oa,d]of Object.entries(window.ME2N)){d[2].forEach(p=>{if(p[2])plants.add(p[2]);});}
   const cur=sel.value;
   let h='<option value="">Todas las Plants</option>';
   [...plants].sort().forEach(p=>h+=`<option value="${p}">${plantLabel(p)}</option>`);
@@ -1598,7 +1588,7 @@ function renderMe2n(){
   const srch=(document.getElementById('poSrch')?.value||'').toLowerCase().trim();
   const fPlant=document.getElementById('poPlant')?.value||'';
   let rows=[];
-  for(const[oa,d]of Object.entries(ME2N)){
+  for(const[oa,d]of Object.entries(window.ME2N)){
     if(!oa||oa==='SIN_CTTO')continue;
     if(!d||!Array.isArray(d)||!Array.isArray(d[2]))continue; // Validar estructura
     const curr=d[1];
@@ -1607,26 +1597,26 @@ function renderMe2n(){
   if(srch) rows=rows.filter(r=>r.oa.includes(srch)||r.poNum.toLowerCase().includes(srch));
   if(fPlant) rows=rows.filter(r=>r.plant===fPlant);
   rows.sort((a,b)=>b.nov-a.nov);
-  const totalAll=Object.values(ME2N).reduce((s,d)=>{
+  const totalAll=Object.values(window.ME2N).reduce((s,d)=>{
     if(!d||!Array.isArray(d)||!Array.isArray(d[2]))return s;
     return s+d[2].length;
   },0);
   document.getElementById('poLcnt').textContent=rows.length+'/'+totalAll;
-  if(!rows.length){box.innerHTML=totalAll?'<div class="empty"><div class="ei">🔍</div><p>Sin resultados.</p></div>':'<div class="empty"><div class="ei">🛒</div><p>Sin datos ME2N. Subí un archivo Excel con la bajada de SAP.</p></div>';return;}
+  if(!rows.length){box.innerHTML=totalAll?'<div class="empty"><div class="ei">🔍</div><p>Sin resultados.</p></div>':'<div class="empty"><div class="ei">🛒</div><p>Sin datos window.ME2N. Subí un archivo Excel con la bajada de SAP.</p></div>';return;}
   let h='<div style="overflow-x:auto"><table><thead><tr><th>N° PO</th><th>N° Contrato</th><th>Net Order Value</th><th>Pend. Facturación</th><th>Mon.</th><th>Lugar</th></tr></thead><tbody>';
   for(const r of rows){const hasPend=r.still>0;const lugar=plantLabel(r.plant);h+=`<tr><td class="mono" style="font-size:11.5px;font-weight:700;color:var(--p700)">${esc(r.poNum)}</td><td class="mono" style="font-size:11.5px;font-weight:600;cursor:pointer;color:var(--p600);text-decoration:underline" onclick="verMe2nDet('${esc(r.oa)}')" title="Ver detalle contrato">${esc(r.oa)}</td><td class="mono" style="font-size:12px;font-weight:600">${fN(r.nov)}</td><td class="mono" style="font-size:12px">${hasPend?'<span class="bdg noinv">'+fN(r.still)+'</span>':'<span style="color:var(--g500)">—</span>'}</td><td style="font-size:12px;font-weight:600">${esc(r.curr)}</td><td style="font-size:11.5px;white-space:nowrap">${esc(lugar)}</td></tr>`;}
   h+='</tbody></table></div>';box.innerHTML=h;
 }
 
-function verMe2nDet(oa){poDetOA=oa;go('me2ndet');}
+function verMe2nDet(oa){window.poDetOA=oa;go('me2ndet');}
 
 function renderMe2nDet(){
-  const card=document.getElementById('poDetCard');if(!card)return;const d=ME2N[poDetOA];if(!d){go('me2n');return;}
+  const card=document.getElementById('poDetCard');if(!card)return;const d=window.ME2N[window.poDetOA];if(!d){go('me2n');return;}
   const vendor=d[0],curr=d[1],pos=d[2];const totalNOV=pos.reduce((s,p)=>s+p[3],0);const totalStill=pos.reduce((s,p)=>s+p[4],0);const totalPO=pos.length;const totalItems=pos.reduce((s,p)=>s+p[5],0);
   const byMonth={};pos.forEach(p=>{const m=p[1]||'Sin fecha';if(!byMonth[m])byMonth[m]={pos:[],total:0,still:0};byMonth[m].pos.push(p);byMonth[m].total+=p[3];byMonth[m].still+=p[4];});
   const months=Object.keys(byMonth).sort().reverse();const plants=[...new Set(pos.map(p=>p[2]).filter(Boolean))].sort();
   let monthsHTML='';months.forEach((m,mi)=>{const md=byMonth[m];const pct=totalNOV>0?(md.total/totalNOV*100):0;const label=m==='Sin fecha'?'Sin fecha':formatMonth(m);monthsHTML+=`<div class="po-month" onclick="togglePoMonth(${mi})"><div class="pm-h"><span class="pm-t">${label}</span><span class="pm-cnt">${md.pos.length} POs</span><span class="pm-v">${curr} ${fN(md.total)}</span></div><div class="pm-bar"><div class="pbar"><div class="fill green" style="width:${pct}%"></div></div></div></div><div class="po-lines" id="poM_${mi}"><div style="padding:6px 10px;display:grid;grid-template-columns:140px 1fr 140px 130px;gap:8px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--g500);border-bottom:1px solid var(--g200)"><span>N° PO</span><span>Lugar</span><span style="text-align:right">Net Order Value</span><span style="text-align:right">Pend. Facturación</span></div>`;md.pos.sort((a,b)=>b[3]-a[3]).forEach(p=>{monthsHTML+=`<div class="po-line" style="grid-template-columns:140px 1fr 140px 130px"><span class="po-num">${p[0]}</span><span style="font-size:11px">${plantLabel(p[2])}</span><span class="mono" style="text-align:right;font-size:11px">${fN(p[3])}</span><span class="mono" style="text-align:right;font-size:11px">${p[4]>0?fN(p[4]):'—'}</span></div>`;});monthsHTML+='</div>';});
-  card.innerHTML=`<div class="card"><div class="det-h"><div><h2>${esc(poDetOA)}</h2><div class="ds">${esc(vendor)} · ${curr}</div></div><div><span class="bdg blue" style="font-size:12px;padding:5px 14px">${plants.map(p=>plantLabel(p)).join(', ')}</span></div></div><div class="po-summ"><div class="po-sc"><div class="po-sl">Net Order Value Total</div><div class="po-sv">${curr} ${fN(totalNOV)}</div></div><div class="po-sc"><div class="po-sl">Pend. Facturación</div><div class="po-sv ${totalStill>0?'':'sm'}" style="${totalStill>0?'color:#92400e':''}">${totalStill>0?curr+' '+fN(totalStill):'—'}</div></div><div class="po-sc"><div class="po-sl">Purchase Orders</div><div class="po-sv">${totalPO}</div></div><div class="po-sc"><div class="po-sl">Líneas Totales</div><div class="po-sv">${totalItems}</div></div></div><div style="padding:16px 20px;border-bottom:1px solid var(--g200)"><span style="font-size:13px;font-weight:600;color:var(--p800)">Consumo Mensual</span><span style="font-size:11px;color:var(--g500);margin-left:8px">(clic para expandir)</span></div>${monthsHTML}</div>`;
+  card.innerHTML=`<div class="card"><div class="det-h"><div><h2>${esc(window.poDetOA)}</h2><div class="ds">${esc(vendor)} · ${curr}</div></div><div><span class="bdg blue" style="font-size:12px;padding:5px 14px">${plants.map(p=>plantLabel(p)).join(', ')}</span></div></div><div class="po-summ"><div class="po-sc"><div class="po-sl">Net Order Value Total</div><div class="po-sv">${curr} ${fN(totalNOV)}</div></div><div class="po-sc"><div class="po-sl">Pend. Facturación</div><div class="po-sv ${totalStill>0?'':'sm'}" style="${totalStill>0?'color:#92400e':''}">${totalStill>0?curr+' '+fN(totalStill):'—'}</div></div><div class="po-sc"><div class="po-sl">Purchase Orders</div><div class="po-sv">${totalPO}</div></div><div class="po-sc"><div class="po-sl">Líneas Totales</div><div class="po-sv">${totalItems}</div></div></div><div style="padding:16px 20px;border-bottom:1px solid var(--g200)"><span style="font-size:13px;font-weight:600;color:var(--p800)">Consumo Mensual</span><span style="font-size:11px;color:var(--g500);margin-left:8px">(clic para expandir)</span></div>${monthsHTML}</div>`;
 }
 
 function togglePoMonth(i){document.getElementById('poM_'+i)?.classList.toggle('open');}
@@ -1640,8 +1630,8 @@ function formatMonth(ym){
 // ═══════════ PO DASHBOARD ═══════════════════════════════
 let _poAvgM=6;
 function renderPoSection(cc){
-  const d=ME2N[cc.num];
-  if(!d||!d[2].length) return '<div class="section-box"><h3>🛒 Purchase Orders (SAP)</h3><div style="font-size:12.5px;color:var(--g500)">Sin POs en ME2N. Importá el Excel desde Purchase Orders.</div></div>';
+  const d=window.ME2N[cc.num];
+  if(!d||!d[2].length) return '<div class="section-box"><h3>🛒 Purchase Orders (SAP)</h3><div style="font-size:12.5px;color:var(--g500)">Sin POs en window.ME2N. Importá el Excel desde Purchase Orders.</div></div>';
   const cPos=d[2],curr=d[1]||cc.mon;const totNOV=cPos.reduce((s,p)=>s+p[3],0);const totTV=cc.monto+(cc.aves||[]).filter(a=>a.tipo==='POLINOMICA').reduce((s,a)=>s+(a.monto||0),0)+(cc.aves||[]).filter(a=>a.tipo==='OWNER').reduce((s,a)=>s+(a.monto||0),0);const rem=totTV-totNOV;const remMonths=monthsRemainingInclusive(ymToday(),cc.fechaFin);
   const byM={};cPos.forEach(p=>{const m=p[1]||'Sin fecha';if(!byM[m])byM[m]={pos:[],nov:0,still:0};byM[m].pos.push(p);byM[m].nov+=p[3];byM[m].still+=p[4];});
   const months=Object.keys(byM).filter(m=>m!=='Sin fecha').sort();const allM=[...months];if(byM['Sin fecha'])allM.push('Sin fecha');const recentMonths=months.slice(-Math.max(_poAvgM,1));const avg=recentMonths.length?recentMonths.reduce((s,m)=>s+byM[m].nov,0)/recentMonths.length:0;const maxN=Math.max(...allM.map(m=>byM[m]?.nov||0),1);
@@ -1697,7 +1687,7 @@ function onCorrToggle(){
   document.getElementById('ne_corrGrp').style.display=on?'':'none';
 }
 function prefillCorrEnm(){
-  const cc=DB.find(x=>x.id===detId);if(!cc)return;
+  const cc=window._DB.find(x=>x.id===window.detId);if(!cc)return;
   const num=parseInt(document.getElementById('ne_corrEnm')?.value);
   const enm=cc.enmiendas?.find(e=>e.num===num);
   if(enm){
@@ -1708,7 +1698,7 @@ function prefillCorrEnm(){
   }
 }
 function buildPolyForm(prefill){
-  const cc=DB.find(x=>x.id===detId);if(!cc)return;
+  const cc=window._DB.find(x=>x.id===window.detId);if(!cc)return;
   const poly=(cc.poly||[]).filter(p=>p.idx);
   const box=document.getElementById('ne_polyTerms');if(!box)return;
   const basePer=gv('ne_basePer')||cc.btar||'';
@@ -1733,7 +1723,7 @@ function buildPolyForm(prefill){
   box.innerHTML=h;
 }
 function calcPoly(){
-  const cc=DB.find(x=>x.id===detId);if(!cc)return 0;
+  const cc=window._DB.find(x=>x.id===window.detId);if(!cc)return 0;
   const poly=(cc.poly||[]).filter(p=>p.idx);
   let pct=0;
   poly.forEach((t,i)=>{
@@ -1747,7 +1737,7 @@ function calcPoly(){
   return pct;
 }
 function previewPolyTar(){
-  const cc=DB.find(x=>x.id===detId);if(!cc)return;
+  const cc=window._DB.find(x=>x.id===window.detId);if(!cc)return;
   const pct=calcPoly();
   if(Math.abs(pct)<0.000001){toast('Ingresá los % acumulados de cada índice','er');return;}
   const basePer=gv('ne_basePer');
@@ -1787,7 +1777,7 @@ function onAveManualChange(){
   }
 }
 function calcAveSug(){
-  const cc=DB.find(x=>x.id===detId);if(!cc)return;
+  const cc=window._DB.find(x=>x.id===window.detId);if(!cc)return;
   const pct=calcPoly();_polyLast=pct;
   const tot=cc.monto+(cc.aves||[]).filter(a=>a.tipo==='POLINOMICA').reduce((s,a)=>s+(a.monto||0),0)+(cc.aves||[]).filter(a=>a.tipo==='OWNER').reduce((s,a)=>s+(a.monto||0),0);
   const tipo=(document.querySelector('input[name="ne_ctipo"]:checked')?.value)||cc.tipo;
@@ -1828,7 +1818,7 @@ function recalcTarChain(cc,fromPeriod){
   });
 }
 async function guardarEnm(){
-  const cc=DB.find(x=>x.id===detId); if(!cc) return;
+  const cc=window._DB.find(x=>x.id===window.detId); if(!cc) return;
   const tipo=gv('ne_tipo'); if(!tipo){ toast('Seleccioná el tipo', 'er'); return; }
   if(!cc.enmiendas) cc.enmiendas=[];
   if(!cc.tarifarios) cc.tarifarios=[];
@@ -1928,7 +1918,7 @@ async function guardarEnm(){
 
   cc.enmiendas.push(enm);
   cc.updatedAt=new Date().toISOString();
-  if(!SB_OK) localStorage.setItem('cta_v7', JSON.stringify(DB));
+  if(!window.SB_OK) localStorage.setItem('cta_v7', JSON.stringify(window._DB));
   else await sbUpsertItem('contratos', cc);
 
   closeEnmPanel();
@@ -1958,7 +1948,7 @@ function onAvoSubChange(){
   const og=document.getElementById('avo_otro_grp');if(og)og.style.display=v==='OTRO'?'':'none';
 }
 async function saveAveOwner(){
-  const cc=DB.find(x=>x.id===detId);if(!cc)return;
+  const cc=window._DB.find(x=>x.id===window.detId);if(!cc)return;
   const aveMonto=parseFloat(document.getElementById('avo_monto')?.value)||0;
   if(!aveMonto){toast('Ingresá el monto del AVE','er');return;}
   const sub=document.getElementById('avo_sub')?.value||'';
@@ -1997,7 +1987,7 @@ async function saveAveOwner(){
   const ownerSum=cc.aves.filter(a=>a.tipo==='OWNER').reduce((s,a)=>s+(a.monto||0),0);
   const limit=cc._aveOwnerLimit||250000;
   cc.updatedAt=new Date().toISOString();
-  if(!SB_OK)localStorage.setItem('cta_v7',JSON.stringify(DB));
+  if(!window.SB_OK)localStorage.setItem('cta_v7',JSON.stringify(window._DB));
   else await sbUpsertItem('contratos',cc);
   closeAveOwnerPanel();
   renderDet();renderList();updNav();
@@ -2005,10 +1995,10 @@ async function saveAveOwner(){
   else toast('AVE Owner registrado — '+cc.mon+' '+fN(aveMonto),'ok');
 }
 async function setAveLimit(id,val){
-  const cc=DB.find(x=>x.id===id);if(!cc)return;
+  const cc=window._DB.find(x=>x.id===id);if(!cc)return;
   cc._aveOwnerLimit=parseFloat(val)||250000;
   cc.updatedAt=new Date().toISOString();
-  if(!SB_OK)localStorage.setItem('cta_v7',JSON.stringify(DB));
+  if(!window.SB_OK)localStorage.setItem('cta_v7',JSON.stringify(window._DB));
   else await sbUpsertItem('contratos',cc);
   renderDet();
 }
@@ -2032,9 +2022,9 @@ function getTarEnmLabel(cc,enmNum){if(!enmNum)return 'Base contractual';const en
 function setTarPeriod(period){_tarPeriod=period;_tarTab=0;renderTarifario();}
 function renderTarifario(){
   const box=document.getElementById('tarContainer');if(!box)return;
-  const cc=DB.find(x=>x.id===detId);if(!cc)return;
+  const cc=window._DB.find(x=>x.id===window.detId);if(!cc)return;
   const raw=getTar();
-  const importCtl = '<input type="file" id="tarAiIn" accept=".doc,.docx,.xls,.xlsx" style="display:none" onchange="importPriceListsFromFiles(this.files);this.value=\'\'">';
+  const importCtl = '<input type="file" id="tarAiIn" accept=".doc,.docx,.xls,.xlsx" style="display:none" onchange="importPriceListsFromFiles(this.window.files);this.value=\'\'">';
   const topActions = `<div class="tar-actions" style="margin-bottom:10px;border:1px solid var(--g200);border-radius:8px;background:var(--g50)"><button class="btn btn-p btn-sm" onclick="openPriceListImportPicker()">🤖 Importar listas (Word/Excel)</button><button class="btn btn-s btn-sm" onclick="addTarTable()">➕ Nueva tabla</button><button class="btn btn-g btn-sm" onclick="saveTarifarios()">💾 Guardar ahora</button>${raw.length?'<span style="margin-left:auto;font-size:11px;color:var(--g500)">Editá precios inline, agregá/borrá filas o eliminá la tabla seleccionada.</span>':''}</div>`;
   if(!raw.length){box.innerHTML=importCtl+topActions+'<div class="empty" style="padding:28px"><div class="ei">💲</div><p>Sin listas de precios. Importá desde Word/Excel con IA o creá una tabla manual.</p></div>';return;}
   const all=raw.map((t,i)=>({...t,_idx:i,_period:getTarPeriodValue(cc,t)}));
@@ -2109,8 +2099,8 @@ const CAT_CSS = {mo:'mo-c',ipc:'ipc-c',ipim:'ipim-c',fuel:'fuel-c',usd:'usd-c'};
 const CAT_PILL = {mo:'mo',ipc:'ipc',ipim:'ipim',fuel:'fuel',usd:'usd'};
 
 // ── Storage ────────────────────────────────────────────────────────────
-// IDX_STORE = { [idxId]: { rows:[{ym,pct,confirmed,note,files:[{name,data}]}] } }
-let IDX_STORE = {};
+// window.IDX_STORE = { [idxId]: { rows:[{ym,pct,confirmed,note,window.files:[{name,data}]}] } }
+let window.IDX_STORE = {};
 const IDX_OFFICIAL_SEED = {
   ipc_nac:[{ym:'2026-02',pct:2.9,value:null,publishedAt:'2026-03-12',source:'INDEC',sourceUrl:'https://www.indec.gob.ar/indec/web/Nivel4-Tema-3-5-31',note:'IPC Nacional (nivel general) oficial INDEC'}],
   ipc_gba:[{ym:'2026-02',pct:2.6,value:null,publishedAt:'2026-03-12',source:'INDEC',sourceUrl:'https://www.indec.gob.ar/indec/web/Nivel4-Tema-3-5-31',note:'IPC GBA (nivel general) oficial INDEC'}],
@@ -2125,39 +2115,39 @@ const IDX_OFFICIAL_SEED = {
 };
 function ymCompare(a,b){return String(a||'').localeCompare(String(b||''));}
 function idxResolveOfficial(def,targetYm){const rows=(IDX_OFFICIAL_SEED[def.id]||[]).slice().sort((a,b)=>ymCompare(a.ym,b.ym));if(!rows.length)return null;let chosen=null;for(const row of rows){if(ymCompare(row.ym,targetYm)<=0)chosen=row;}if(!chosen)chosen=rows[rows.length-1];return {ym:chosen.ym,pct:chosen.pct!=null?Number(chosen.pct):null,value:chosen.value!=null?Number(chosen.value):null,publishedAt:chosen.publishedAt||null,sourceUrl:chosen.sourceUrl||null,status:chosen.ym===targetYm?'updated':'waiting_release',note:(chosen.note||def.name)+(chosen.ym===targetYm?'':' · último oficial disponible'),source:chosen.source||def.src};}
-function idxMergeOfficialSeeds(){Object.entries(IDX_OFFICIAL_SEED).forEach(([id,rows])=>{(rows||[]).forEach(row=>{const existing=((IDX_STORE[id]||{}).rows||[]).find(r=>r.ym===row.ym);if(!existing||((existing.pct==null&&row.pct!=null)||(existing.value==null&&row.value!=null)||String(existing.publishedAt||'')<String(row.publishedAt||''))){idxUpsert(id,{...(existing||{}),...row,confirmed:existing?.confirmed??false,status:'updated'});}});});}
+function idxMergeOfficialSeeds(){Object.entries(IDX_OFFICIAL_SEED).forEach(([id,rows])=>{(rows||[]).forEach(row=>{const existing=((window.IDX_STORE[id]||{}).rows||[]).find(r=>r.ym===row.ym);if(!existing||((existing.pct==null&&row.pct!=null)||(existing.value==null&&row.value!=null)||String(existing.publishedAt||'')<String(row.publishedAt||''))){idxUpsert(id,{...(existing||{}),...row,confirmed:existing?.confirmed??false,status:'updated'});}});});}
 function loadIdx(){
-  // No-op: IDX_STORE is loaded by initApp() from Supabase.
+  // No-op: window.IDX_STORE is loaded by initApp() from Supabase.
   // Called only as fallback from within initApp catch block (already handled there).
   idxMergeOfficialSeeds();
 }
 async function saveIdx(){
   // Always persist to Supabase when available; mirror to localStorage as backup.
-  localStorage.setItem('idx_v2', JSON.stringify(IDX_STORE));
-  if(SB_OK){
-    try{ await sbUpsertSingle('indices', IDX_STORE); }
+  localStorage.setItem('idx_v2', JSON.stringify(window.IDX_STORE));
+  if(window.SB_OK){
+    try{ await sbUpsertSingle('indices', window.IDX_STORE); }
     catch(e){ console.warn('saveIdx SB error', e); }
   }
 }
 async function resetIdxAll(){
   if(!confirm('Se van a borrar todos los indicadores cargados manualmente y se reconstruirá la base oficial inicial. ¿Continuar?'))return;
   try{localStorage.removeItem('idx_v2');}catch(_e){}
-  IDX_STORE={};
+  window.IDX_STORE={};
   idxMergeOfficialSeeds();
   await saveIdx();
-  _idxSel=null; renderIdxView(); toast('Indicadores reiniciados','ok');
+  window._idxSel=null; renderIdxView(); toast('Indicadores reiniciados','ok');
 }
-// NOTE: intentional no IIFE here — initApp() loads IDX_STORE from Supabase async.
+// NOTE: intentional no IIFE here — initApp() loads window.IDX_STORE from Supabase async.
 
 function idxRows(id){
-  if(!IDX_STORE[id]) IDX_STORE[id] = {rows:[]};
-  return (IDX_STORE[id]||{}).rows||[];
+  if(!window.IDX_STORE[id]) window.IDX_STORE[id] = {rows:[]};
+  return (window.IDX_STORE[id]||{}).rows||[];
 }
 function idxLastRow(id){const r=idxRows(id);return r.length?r[r.length-1]:null;}
 function idxTargetYm(){const now=new Date();return new Date(now.getFullYear(),now.getMonth()-1,1).toISOString().substring(0,7);}
 function idxPrevYm(ym){const [y,m]=String(ym||'').split('-').map(Number); if(!y||!m)return ''; return new Date(y,m-2,1).toISOString().substring(0,7);}
 function idxLastBefore(id, ym){const rows=idxRows(id).filter(r=>String(r.ym||'')<String(ym)).sort((a,b)=>String(a.ym).localeCompare(String(b.ym)));return rows.length?rows[rows.length-1]:null;}
-async function idxUpsert(id,row){if(!IDX_STORE[id])IDX_STORE[id]={rows:[]};if(!Array.isArray(IDX_STORE[id].rows))IDX_STORE[id].rows=[];const rows=IDX_STORE[id].rows;const pos=rows.findIndex(r=>r.ym===row.ym);const merged={...(pos>=0?rows[pos]:{}),...row};if(pos>=0)rows[pos]=merged;else rows.push(merged);rows.sort((a,b)=>String(a.ym).localeCompare(String(b.ym)));await saveIdx();return merged;}
+async function idxUpsert(id,row){if(!window.IDX_STORE[id])window.IDX_STORE[id]={rows:[]};if(!Array.isArray(window.IDX_STORE[id].rows))window.IDX_STORE[id].rows=[];const rows=window.IDX_STORE[id].rows;const pos=rows.findIndex(r=>r.ym===row.ym);const merged={...(pos>=0?rows[pos]:{}),...row};if(pos>=0)rows[pos]=merged;else rows.push(merged);rows.sort((a,b)=>String(a.ym).localeCompare(String(b.ym)));await saveIdx();return merged;}
 function idxValueLabel(def,row){if(!row)return '—';if(def.cat==='usd')return row.value!=null?fN(row.value):'—';return pctStr(row.pct);}
 function idxStatusText(id){const target=idxTargetYm();const def=IDX_CATALOG.find(d=>d.id===id);const exact=idxRows(id).find(r=>r.ym===target);if(exact)return exact.status==='fallback'?'Fallback '+formatMonth(exact.ym):'Actualizado '+formatMonth(exact.ym);if(def){const official=idxResolveOfficial(def,target);if(official&&official.ym)return 'Último oficial '+formatMonth(official.ym);}const prev=idxLastBefore(id,target);return prev?('Último disponible '+formatMonth(prev.ym)):'Sin ejecutar';}
 function idxMonthToText(ym){return ym?formatMonth(ym):'—';}
@@ -2241,7 +2231,7 @@ function pctStr(v,decimals=2){if(v===null||v===undefined)return'—';return(v>0?
 function acumCompound(rows){return rows.reduce((prod,r)=>prod*(1+(r.pct||0)/100),1)-1;}
 
 // ── STATE ──────────────────────────────────────────────────────────────
-let _idxSel = null;   // currently open detail
+let window._idxSel = null;   // currently open detail
 let _idxEntryId = null; // entry modal target
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -2250,10 +2240,10 @@ let _idxEntryId = null; // entry modal target
 function renderIdxView(){
   loadIdx();
   renderIdxDash();
-  if(_idxSel){
+  if(window._idxSel){
     document.getElementById('idxDetPanel').style.display='';
     document.getElementById('idxCardsGrid').style.display='none';
-    renderIdxDet(_idxSel);
+    renderIdxDet(window._idxSel);
   } else {
     document.getElementById('idxDetPanel').style.display='none';
     document.getElementById('idxCardsGrid').style.display='';
@@ -2297,7 +2287,7 @@ function renderIdxCards(){
       
       const spark8=rows.slice(-8), maxAbs=Math.max(...spark8.map(r=>Math.abs(r.pct||0)),0.001);
       const sparkH=spark8.map(r=>{ const pct=r.pct||0; const h8=Math.max(Math.round(Math.abs(pct)/maxAbs*28),2); return `<div class="spark-b ${pct>=0?'pos':'neg'}" style="height:${h8}px" title="${pctStr(pct)} ${formatMonth(r.ym)}"></div>`; }).join('');
-      h+=`<div class="idx-c ${_idxSel===def.id?'sel':''}" onclick="openIdxDet('${def.id}')"><div class="idx-c-top ${CAT_CSS[cat]}"></div><div class="idx-c-body"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px;margin-bottom:4px"><div class="idx-c-name">${esc(def.name)}${def.cct?'<div style="font-size:9.5px;color:var(--g500);font-weight:600;margin-top:2px">'+esc(def.cct)+'</div>':''}<div style="font-size:10px;color:var(--g500);font-weight:600;margin-top:4px">Objetivo: ${formatMonth(target)} · Últ. valor: ${displayYm?formatMonth(displayYm):'—'}</div></div><span class="icat ${CAT_PILL[cat]}" style="flex-shrink:0">${esc(def.src)}</span></div><div class="idx-c-kpi"><span class="big ${last?.value!=null?'pos':pctColor(displayValue)}">${pctStr(displayValue)}</span><span class="period">${displayYm?formatMonth(displayYm):'sin datos'}</span>${last?.status==='fallback'?'<span style="font-size:11px" title="Fallback">↩️</span>':''}</div>${spark8.length?`<div class="spark">${sparkH}</div>`:`<div style="height:28px;display:flex;align-items:center;font-size:11px;color:var(--g400)">Sin datos aún</div>`}<div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;gap:8px"><div style="font-size:10px;color:var(--g500)">Estado: <strong>${idxStatusText(def.id)}</strong></div>${cat!=='mo'?`<button class="btn btn-s btn-sm" onclick="event.stopPropagation();runIdxUpdate('${def.id}')">🔄 Actualizar</button>`:''}</div></div></div>`;
+      h+=`<div class="idx-c ${window._idxSel===def.id?'sel':''}" onclick="openIdxDet('${def.id}')"><div class="idx-c-top ${CAT_CSS[cat]}"></div><div class="idx-c-body"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px;margin-bottom:4px"><div class="idx-c-name">${esc(def.name)}${def.cct?'<div style="font-size:9.5px;color:var(--g500);font-weight:600;margin-top:2px">'+esc(def.cct)+'</div>':''}<div style="font-size:10px;color:var(--g500);font-weight:600;margin-top:4px">Objetivo: ${formatMonth(target)} · Últ. valor: ${displayYm?formatMonth(displayYm):'—'}</div></div><span class="icat ${CAT_PILL[cat]}" style="flex-shrink:0">${esc(def.src)}</span></div><div class="idx-c-kpi"><span class="big ${last?.value!=null?'pos':pctColor(displayValue)}">${pctStr(displayValue)}</span><span class="period">${displayYm?formatMonth(displayYm):'sin datos'}</span>${last?.status==='fallback'?'<span style="font-size:11px" title="Fallback">↩️</span>':''}</div>${spark8.length?`<div class="spark">${sparkH}</div>`:`<div style="height:28px;display:flex;align-items:center;font-size:11px;color:var(--g400)">Sin datos aún</div>`}<div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;gap:8px"><div style="font-size:10px;color:var(--g500)">Estado: <strong>${idxStatusText(def.id)}</strong></div>${cat!=='mo'?`<button class="btn btn-s btn-sm" onclick="event.stopPropagation();runIdxUpdate('${def.id}')">🔄 Actualizar</button>`:''}</div></div></div>`;
     });
     h+='</div></div>';
   });
@@ -2306,12 +2296,12 @@ function renderIdxCards(){
 
 // ── Open detail ────────────────────────────────────────────────────────
 function openIdxDet(id){
-  _idxSel=id;
+  window._idxSel=id;
   renderIdxView();
   window.scrollTo({top:0,behavior:'smooth'});
 }
 function closeIdxDet(){
-  _idxSel=null;
+  window._idxSel=null;
   renderIdxView();
 }
 
@@ -2324,8 +2314,8 @@ function renderIdxDet(id){
   const bars=chartRows.map((r,i)=>{ const pct=r.pct||0; const h=Math.max(Math.round(Math.abs(pct)/maxAbs*72),2); const isLast=i===chartRows.length-1; return `<div class="cbar-wrap"><div class="cbar-val ${pct>=0?'pos':'neg'}">${pctStr(pct,1)}</div><div class="cbar ${pct>=0?'pos':'neg'} ${isLast?'act':''}" style="height:${h}px"></div><div class="cbar-lbl">${formatMonth(r.ym).replace(' ','\n')}</div></div>`; }).join('');
   const selOpts=(yms.length>=2?yms:['—']).map((ym,i)=>`<option value="${ym}"${i===0?'selected':''}>${formatMonth(ym)}</option>`).join('');
   const selOptTo=(yms.length>=2?yms:['—']).map((ym,i)=>`<option value="${ym}"${i===yms.length-1?'selected':''}>${formatMonth(ym)}</option>`).join('');
-  const tblRows=[...rows].reverse().map(r=>`<tr><td>${formatMonth(r.ym)}</td><td class="mono ${r.value!=null?'pos':((r.pct||0)>=0?'pos':'neg')}">${r.value!=null?fN(r.value):pctStr(r.pct)}</td><td style="text-align:center">${r.confirmed?'<span style="cursor:pointer" onclick="toggleIdxConfirm(\'${id}\',\'${r.ym}\',false)" title="Click para desconfirmar">✅</span>':'<span style="cursor:pointer;color:var(--g400)" onclick="toggleIdxConfirm(\'${id}\',\'${r.ym}\',true)" title="Click para confirmar">○</span>'}</td><td style="font-size:11px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(r.note||r.status||'')}">${esc(r.note||r.status||'—')}</td><td>${(r.files||[]).length?`<button class="btn btn-s btn-sm" onclick="downloadIdxFile(\'${id}\',\'${r.ym}\',0)" style="font-size:10px;padding:2px 7px">📎 ${(r.files||[]).length}</button>`:'—'}</td><td style="white-space:nowrap"><button class="btn btn-s btn-sm" style="font-size:10px;padding:2px 6px;margin-right:3px" onclick="openEntryModal(\'${id}\',\'${r.ym}\')" title="Editar">✏️</button><button class="btn btn-d btn-sm" style="font-size:10px;padding:2px 6px" onclick="deleteIdxRow(\'${id}\',\'${r.ym}\')" title="Eliminar">🗑</button></td></tr>`).join('');
-  box.innerHTML = `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px"><div><h3 style="margin:0">${esc(def.name)}</h3><div style="font-size:12px;color:var(--g500)">Fuente: ${esc(def.src)} · Estado: ${idxStatusText(id)}</div></div><div style="display:flex;gap:8px;flex-wrap:wrap">${def.cat!=='mo'?`<button class="btn btn-s btn-sm" onclick="runIdxUpdate('${id}')">🔄 Actualizar</button>`:''}<button class="btn btn-s btn-sm" onclick="_idxSel=null;renderIdxView()">← Volver</button><button class="btn btn-p btn-sm" onclick="openEntryModal('${id}',null)">➕ Cargar</button><button class="btn btn-s btn-sm" onclick="confirmAllIdx('${id}')">✅ Confirmar todos</button><button class="btn btn-d btn-sm" style="font-size:11px" onclick="if(confirm('¿Borrar todos los datos de este índice?')){IDX_STORE['${id}']={rows:[]};saveIdx().then(()=>{renderIdxView();toast('Índice limpiado','ok');});}">🗑 Limpiar</button></div></div><div class="card"><div class="chart-bars">${bars||'<div class="small">Sin datos</div>'}</div></div><div class="card" style="margin-top:12px"><div style="display:flex;gap:8px;align-items:center;margin-bottom:8px"><label>Acumulado desde</label><select id="idxFrom">${selOpts}</select><label>hasta</label><select id="idxTo">${selOptTo}</select><button class="btn btn-s btn-sm" onclick="calcIdxAcum('${id}')">Calcular</button><span id="idxAcumRes" class="mono"></span></div><div style="overflow:auto"><table class="tbl"><thead><tr><th>Período</th><th>Valor</th><th>Confirmado</th><th>Nota</th><th>Adjuntos</th><th>Acciones</th></tr></thead><tbody>${tblRows||'<tr><td colspan="6" style="text-align:center;color:var(--g400);font-style:italic;padding:16px">Sin datos cargados. Usá ➕ Cargar para agregar el primer período.</td></tr>'}</tbody></table></div></div>`;
+  const tblRows=[...rows].reverse().map(r=>`<tr><td>${formatMonth(r.ym)}</td><td class="mono ${r.value!=null?'pos':((r.pct||0)>=0?'pos':'neg')}">${r.value!=null?fN(r.value):pctStr(r.pct)}</td><td style="text-align:center">${r.confirmed?'<span style="cursor:pointer" onclick="toggleIdxConfirm(\'${id}\',\'${r.ym}\',false)" title="Click para desconfirmar">✅</span>':'<span style="cursor:pointer;color:var(--g400)" onclick="toggleIdxConfirm(\'${id}\',\'${r.ym}\',true)" title="Click para confirmar">○</span>'}</td><td style="font-size:11px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(r.note||r.status||'')}">${esc(r.note||r.status||'—')}</td><td>${(r.window.files||[]).length?`<button class="btn btn-s btn-sm" onclick="downloadIdxFile(\'${id}\',\'${r.ym}\',0)" style="font-size:10px;padding:2px 7px">📎 ${(r.window.files||[]).length}</button>`:'—'}</td><td style="white-space:nowrap"><button class="btn btn-s btn-sm" style="font-size:10px;padding:2px 6px;margin-right:3px" onclick="openEntryModal(\'${id}\',\'${r.ym}\')" title="Editar">✏️</button><button class="btn btn-d btn-sm" style="font-size:10px;padding:2px 6px" onclick="deleteIdxRow(\'${id}\',\'${r.ym}\')" title="Eliminar">🗑</button></td></tr>`).join('');
+  box.innerHTML = `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px"><div><h3 style="margin:0">${esc(def.name)}</h3><div style="font-size:12px;color:var(--g500)">Fuente: ${esc(def.src)} · Estado: ${idxStatusText(id)}</div></div><div style="display:flex;gap:8px;flex-wrap:wrap">${def.cat!=='mo'?`<button class="btn btn-s btn-sm" onclick="runIdxUpdate('${id}')">🔄 Actualizar</button>`:''}<button class="btn btn-s btn-sm" onclick="window._idxSel=null;renderIdxView()">← Volver</button><button class="btn btn-p btn-sm" onclick="openEntryModal('${id}',null)">➕ Cargar</button><button class="btn btn-s btn-sm" onclick="confirmAllIdx('${id}')">✅ Confirmar todos</button><button class="btn btn-d btn-sm" style="font-size:11px" onclick="if(confirm('¿Borrar todos los datos de este índice?')){window.IDX_STORE['${id}']={rows:[]};saveIdx().then(()=>{renderIdxView();toast('Índice limpiado','ok');});}">🗑 Limpiar</button></div></div><div class="card"><div class="chart-bars">${bars||'<div class="small">Sin datos</div>'}</div></div><div class="card" style="margin-top:12px"><div style="display:flex;gap:8px;align-items:center;margin-bottom:8px"><label>Acumulado desde</label><select id="idxFrom">${selOpts}</select><label>hasta</label><select id="idxTo">${selOptTo}</select><button class="btn btn-s btn-sm" onclick="calcIdxAcum('${id}')">Calcular</button><span id="idxAcumRes" class="mono"></span></div><div style="overflow:auto"><table class="tbl"><thead><tr><th>Período</th><th>Valor</th><th>Confirmado</th><th>Nota</th><th>Adjuntos</th><th>Acciones</th></tr></thead><tbody>${tblRows||'<tr><td colspan="6" style="text-align:center;color:var(--g400);font-style:italic;padding:16px">Sin datos cargados. Usá ➕ Cargar para agregar el primer período.</td></tr>'}</tbody></table></div></div>`;
 }
 
 function calcIdxAcum(id){
@@ -2356,7 +2346,7 @@ function openEntryModal(idxId, ym){
   }
   if(!defaultYm){const n=new Date();defaultYm=n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0');}
 
-  const filesHtml=(existing?.files||[]).map((f,fi)=>
+  const filesHtml=(existing?.window.files||[]).map((f,fi)=>
     `<div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid var(--g100)">
       <span style="flex:1;font-size:12px">📎 ${esc(f.name)}</span>
       <button class="btn btn-d btn-sm" style="font-size:10px;padding:2px 7px" onclick="removeEntryFile(${fi})">✕</button>
@@ -2389,7 +2379,7 @@ function openEntryModal(idxId, ym){
           <div class="fzi" style="font-size:20px">📎</div>
           <div class="fzt">Adjuntá el comprobante / informe</div>
         </div>
-        <input type="file" id="em_finput" multiple accept=".pdf,.png,.jpg,.jpeg,.xlsx,.xls,.csv" style="display:none" onchange="handleEntryFiles(this.files)">
+        <input type="file" id="em_finput" multiple accept=".pdf,.png,.jpg,.jpeg,.xlsx,.xls,.csv" style="display:none" onchange="handleEntryFiles(this.window.files)">
         <div id="em_flist">${filesHtml}</div>
       </div>
       <div style="font-size:11px;color:var(--g500)">
@@ -2405,7 +2395,7 @@ function openEntryModal(idxId, ym){
   const fz=document.getElementById('em_fzone');
   fz.ondragover=e=>{e.preventDefault();fz.style.borderColor='var(--p400)';};
   fz.ondragleave=()=>fz.style.borderColor='';
-  fz.ondrop=e=>{e.preventDefault();fz.style.borderColor='';handleEntryFiles(e.dataTransfer.files);};
+  fz.ondrop=e=>{e.preventDefault();fz.style.borderColor='';handleEntryFiles(e.dataTransfer.window.files);};
 }
 
 let _entryFiles=[];
@@ -2435,15 +2425,15 @@ async function saveEntryModal(idxId, editYm){
   const pct=parseFloat(pctRaw);
   if(isNaN(pct)){toast('El valor debe ser numérico','er');return;}
   const note=document.getElementById('em_note')?.value.trim()||'';
-  if(!IDX_STORE[idxId])IDX_STORE[idxId]={};
-  if(!IDX_STORE[idxId].rows)IDX_STORE[idxId].rows=[];
-  const existing=IDX_STORE[idxId].rows.find(r=>r.ym===ym);
-  // Merge files: keep existing + add new
-  const existingFiles=existing?.files||[];
+  if(!window.IDX_STORE[idxId])window.IDX_STORE[idxId]={};
+  if(!window.IDX_STORE[idxId].rows)window.IDX_STORE[idxId].rows=[];
+  const existing=window.IDX_STORE[idxId].rows.find(r=>r.ym===ym);
+  // Merge window.files: keep existing + add new
+  const existingFiles=existing?.window.files||[];
   const allFiles=[...existingFiles,..._entryFiles];
-  const row={ym,pct,note,files:allFiles,confirmed:existing?.confirmed||false};
+  const row={ym,pct,note,window.files:allFiles,confirmed:existing?.confirmed||false};
   if(existing){Object.assign(existing,row);}
-  else{IDX_STORE[idxId].rows.push(row);IDX_STORE[idxId].rows.sort((a,b)=>a.ym.localeCompare(b.ym));}
+  else{window.IDX_STORE[idxId].rows.push(row);window.IDX_STORE[idxId].rows.sort((a,b)=>a.ym.localeCompare(b.ym));}
   await saveIdx();
   closeIdxModal();
   toast(formatMonth(ym)+': '+pctStr(pct)+' guardado','ok');
@@ -2457,21 +2447,21 @@ function closeIdxModal(){
 
 // ── Actions ────────────────────────────────────────────────────────────
 async function toggleIdxConfirm(idxId,ym,val){
-  const r=(IDX_STORE[idxId]?.rows||[]).find(r=>r.ym===ym);
+  const r=(window.IDX_STORE[idxId]?.rows||[]).find(r=>r.ym===ym);
   if(r){r.confirmed=val;await saveIdx();renderIdxView();}
 }
 async function confirmAllIdx(idxId){
-  (IDX_STORE[idxId]?.rows||[]).forEach(r=>r.confirmed=true);
+  (window.IDX_STORE[idxId]?.rows||[]).forEach(r=>r.confirmed=true);
   await saveIdx();toast('Todos confirmados','ok');renderIdxView();
 }
 async function deleteIdxRow(idxId,ym){
   if(!confirm('¿Eliminar el período '+formatMonth(ym)+'?'))return;
-  IDX_STORE[idxId].rows=(IDX_STORE[idxId].rows||[]).filter(r=>r.ym!==ym);
+  window.IDX_STORE[idxId].rows=(window.IDX_STORE[idxId].rows||[]).filter(r=>r.ym!==ym);
   await saveIdx();renderIdxView();toast('Período eliminado','ok');
 }
 function downloadIdxFile(idxId,ym,fi){
-  const row=(IDX_STORE[idxId]?.rows||[]).find(r=>r.ym===ym);
-  const f=row?.files?.[fi];if(!f)return;
+  const row=(window.IDX_STORE[idxId]?.rows||[]).find(r=>r.ym===ym);
+  const f=row?.window.files?.[fi];if(!f)return;
   const a=document.createElement('a');a.href=f.data;a.download=f.name;a.click();
 }
 
@@ -2506,16 +2496,16 @@ function switchModalIdx(id){
 // ═══════════════════════════════════════════════════════════════════════
 //  LICITACIONES — Motor completo
 // ═══════════════════════════════════════════════════════════════════════
-// LICIT_DB: [{id, docAriba, titulo, tipo:'RFQ_ARIBA'|'RFQ_MAIL'|'DIRECTA',
+// window.LICIT_DB: [{id, docAriba, titulo, tipo:'RFQ_ARIBA'|'RFQ_MAIL'|'DIRECTA',
 //   fechaApertura, contrato, estado:'EN_PROCESO'|'ADJUDICADA'|'DESIERTA',
 //   ganador, oferentes:[{nombre, aprobTec:bool, part2da:bool, doc2da}],
 //   items:[{id,tipo:'item'|'subtotal'|'seccion', desc, valores:{[ofrIdx]:number}}],
 //   adjuntos:[{name,data}], obs, createdAt}]
-let LICIT_DB=[];
+let window.LICIT_DB=[];
 let _licitDet=null;
 
-function loadLicit(){try{LICIT_DB=JSON.parse(localStorage.getItem('licit_v1'))||[];}catch(e){LICIT_DB=[];}}
-function saveLicit(){localStorage.setItem('licit_v1',JSON.stringify(LICIT_DB));}
+function loadLicit(){try{window.LICIT_DB=JSON.parse(localStorage.getItem('licit_v1'))||[];}catch(e){window.LICIT_DB=[];}}
+function saveLicit(){localStorage.setItem('licit_v1',JSON.stringify(window.LICIT_DB));}
 (function(){loadLicit();})();
 
 // ── List view ──────────────────────────────────────────────────────────
@@ -2534,7 +2524,7 @@ function renderLicit(){
 
 function renderLicitList(){
   const box=document.getElementById('licitList');if(!box)return;
-  if(!LICIT_DB.length){
+  if(!window.LICIT_DB.length){
     box.innerHTML=`<div style="text-align:center;padding:60px 20px;color:var(--g500)">
       <div style="font-size:40px;margin-bottom:12px">📋</div>
       <p style="font-size:14px;font-weight:600;margin-bottom:6px">Sin licitaciones registradas</p>
@@ -2544,13 +2534,13 @@ function renderLicitList(){
     return;
   }
   let h='<div style="margin-bottom:16px;display:flex;gap:10px;flex-wrap:wrap">';
-  const stats={total:LICIT_DB.length,adj:LICIT_DB.filter(l=>l.estado==='ADJUDICADA').length,proc:LICIT_DB.filter(l=>l.estado==='EN_PROCESO').length};
+  const stats={total:window.LICIT_DB.length,adj:window.LICIT_DB.filter(l=>l.estado==='ADJUDICADA').length,proc:window.LICIT_DB.filter(l=>l.estado==='EN_PROCESO').length};
   h+=`<div style="background:var(--w);border-radius:8px;padding:10px 16px;box-shadow:var(--sh);display:flex;gap:20px;flex:1">
     <div><span style="font-size:10px;font-weight:700;color:var(--g500);text-transform:uppercase">Total</span><div style="font-size:20px;font-weight:800;color:var(--p700)">${stats.total}</div></div>
     <div><span style="font-size:10px;font-weight:700;color:var(--g500);text-transform:uppercase">Adjudicadas</span><div style="font-size:20px;font-weight:800;color:var(--g600)">${stats.adj}</div></div>
     <div><span style="font-size:10px;font-weight:700;color:var(--g500);text-transform:uppercase">En Proceso</span><div style="font-size:20px;font-weight:800;color:var(--a500)">${stats.proc}</div></div>
   </div></div>`;
-  LICIT_DB.slice().reverse().forEach(l=>{
+  window.LICIT_DB.slice().reverse().forEach(l=>{
     const eCol=l.estado==='ADJUDICADA'?'var(--g600)':l.estado==='EN_PROCESO'?'var(--a500)':'var(--g500)';
     const eLbl=l.estado==='ADJUDICADA'?'Adjudicada':l.estado==='EN_PROCESO'?'En Proceso':'Desierta';
     h+=`<div class="licit-card ${l.tipo==='RFQ_ARIBA'?'ariba':''} ${l.estado==='ADJUDICADA'?'closed':''}" onclick="openLicitDet('${l.id}')">
@@ -2582,7 +2572,7 @@ function openLicitDet(id){_licitDet=id;renderLicit();}
 function closeLicitDet(){_licitDet=null;renderLicit();}
 
 function renderLicitDet(id){
-  const l=LICIT_DB.find(x=>x.id===id);
+  const l=window.LICIT_DB.find(x=>x.id===id);
   const box=document.getElementById('licitDet');if(!box||!l)return;
   const ofrs=l.oferentes||[];
   const items=l.items||[];
@@ -2702,18 +2692,18 @@ function renderLicitDet(id){
 }
 
 function downloadLicitFile(id,fi){
-  const l=LICIT_DB.find(x=>x.id===id);const f=l?.adjuntos?.[fi];if(!f)return;
+  const l=window.LICIT_DB.find(x=>x.id===id);const f=l?.adjuntos?.[fi];if(!f)return;
   const a=document.createElement('a');a.href=f.data;a.download=f.name;a.click();
 }
 function deleteLicit(id){
   if(!confirm('¿Eliminar esta licitación?'))return;
-  LICIT_DB=LICIT_DB.filter(l=>l.id!==id);saveLicit();renderLicit();toast('Eliminada','ok');
+  window.LICIT_DB=window.LICIT_DB.filter(l=>l.id!==id);saveLicit();renderLicit();toast('Eliminada','ok');
 }
 
 // ── Modal ──────────────────────────────────────────────────────────────
 let _licitFiles=[];
 function openLicitModal(id){
-  const l=id?LICIT_DB.find(x=>x.id===id):null;
+  const l=id?window.LICIT_DB.find(x=>x.id===id):null;
   _licitFiles=l?.adjuntos?.[0]?[...l.adjuntos]:[];
   const ofrs=l?.oferentes||[{nombre:'',aprobTec:true,part2da:false,doc2da:''}];
   const items=l?.items||[{id:'i1',tipo:'item',desc:'',um:'',valores:{}}];
@@ -2772,7 +2762,7 @@ function openLicitModal(id){
         <div class="fgrp"><label>N° Doc Ariba / ID</label><input type="text" id="lm_doc" value="${esc(l?.docAriba||'')}" placeholder="Ej: DOC-2024-0123"></div>
         <div class="fgrp"><label>Tipo</label><select id="lm_tipo"><option value="RFQ_ARIBA" ${l?.tipo==='RFQ_ARIBA'?'selected':''}>RFQ ARIBA</option><option value="RFQ_MAIL" ${l?.tipo==='RFQ_MAIL'?'selected':''}>RFQ MAIL</option><option value="DIRECTA" ${l?.tipo==='DIRECTA'?'selected':''}>Directa</option></select></div>
         <div class="fgrp"><label>Fecha Apertura</label><input type="date" id="lm_fecha" value="${l?.fechaApertura||''}"></div>
-        <div class="fgrp"><label>Contrato vinculado</label><input type="text" id="lm_ctto" value="${esc(l?.contrato||'')}" placeholder="N° contrato Ariba/SAP" list="lm_ctto_list"><datalist id="lm_ctto_list">${DB.map(c=>`<option value="${esc(c.num)}">${esc(c.num)} — ${esc(c.cont)}</option>`).join('')}</datalist></div>
+        <div class="fgrp"><label>Contrato vinculado</label><input type="text" id="lm_ctto" value="${esc(l?.contrato||'')}" placeholder="N° contrato Ariba/SAP" list="lm_ctto_list"><datalist id="lm_ctto_list">${window._DB.map(c=>`<option value="${esc(c.num)}">${esc(c.num)} — ${esc(c.cont)}</option>`).join('')}</datalist></div>
         <div class="fgrp"><label>Estado</label><select id="lm_est"><option value="EN_PROCESO" ${(!l||l?.estado==='EN_PROCESO')?'selected':''}>En Proceso</option><option value="ADJUDICADA" ${l?.estado==='ADJUDICADA'?'selected':''}>Adjudicada</option><option value="DESIERTA" ${l?.estado==='DESIERTA'?'selected':''}>Desierta</option></select></div>
       </div>
       <div class="fg2" style="margin-bottom:14px">
@@ -2809,7 +2799,7 @@ function openLicitModal(id){
       <div class="fgrp" style="margin-bottom:6px">
         <label>Adjuntos (actas, evaluaciones, etc.)</label>
         <div class="fzone" style="padding:10px" onclick="document.getElementById('lm_finput').click()"><div class="fzi" style="font-size:18px">📎</div><div class="fzt">Adjuntá documentación del proceso</div></div>
-        <input type="file" id="lm_finput" multiple style="display:none" onchange="handleLicitFiles(this.files)">
+        <input type="file" id="lm_finput" multiple style="display:none" onchange="handleLicitFiles(this.window.files)">
         <div id="lm_flist">${_licitFiles.map((f,i)=>`<div style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid var(--g100);font-size:12px"><span style="flex:1">📎 ${esc(f.name)}</span><button class="btn btn-d btn-sm" style="padding:2px 6px;font-size:10px" onclick="_licitFiles.splice(${i},1);refreshLicitModal()">✕</button></div>`).join('')}</div>
       </div>
     </div>
@@ -2849,10 +2839,10 @@ function saveLicitModal(){
     oferentes:window._licitOfrs||[],
     items:window._licitItems||[],
     adjuntos:_licitFiles,
-    createdAt:window._editingLicitId?(LICIT_DB.find(l=>l.id===window._editingLicitId)?.createdAt||new Date().toISOString()):new Date().toISOString()
+    createdAt:window._editingLicitId?(window.LICIT_DB.find(l=>l.id===window._editingLicitId)?.createdAt||new Date().toISOString()):new Date().toISOString()
   };
-  if(window._editingLicitId){const i=LICIT_DB.findIndex(l=>l.id===window._editingLicitId);if(i>=0)LICIT_DB[i]=licit;else LICIT_DB.push(licit);}
-  else LICIT_DB.push(licit);
+  if(window._editingLicitId){const i=window.LICIT_DB.findIndex(l=>l.id===window._editingLicitId);if(i>=0)window.LICIT_DB[i]=licit;else window.LICIT_DB.push(licit);}
+  else window.LICIT_DB.push(licit);
   saveLicit();closeLicitModal();
   if(_licitDet)renderLicitDet(id);else renderLicitList();
   toast('Licitación guardada','ok');
@@ -2939,12 +2929,12 @@ function importSapContractsModal(){
     </div>
   </div>`;
   box.querySelector('.sap-import-zone').ondragover=e=>{e.preventDefault();};
-  box.querySelector('.sap-import-zone').ondrop=e=>{e.preventDefault();if(e.dataTransfer.files[0]){processSapImportFile(e.dataTransfer.files[0]);}};
+  box.querySelector('.sap-import-zone').ondrop=e=>{e.preventDefault();if(e.dataTransfer.window.files[0]){processSapImportFile(e.dataTransfer.window.files[0]);}};
   document.body.appendChild(box);
 }
 
 function processSapImport(input){
-  if(input.files[0]) processSapImportFile(input.files[0]);
+  if(input.window.files[0]) processSapImportFile(input.window.files[0]);
 }
 
 function processSapImportFile(file){
@@ -2992,10 +2982,10 @@ function processSapImportFile(file){
       const sapContracts=Object.values(byDoc);
       let added=0,skipped=0;
       sapContracts.forEach(sc=>{
-        const exists=DB.find(d=>d.num===sc.num);
+        const exists=window._DB.find(d=>d.num===sc.num);
         if(exists){skipped++;return;}
         // Create minimal record — marked as SAP import, pending manual completion
-        DB.push({
+        window._DB.push({
           id:Date.now().toString(36)+Math.random().toString(36).substr(2,5)+'_'+added,
           num:sc.num,
           cont:sc.cont,
@@ -3047,13 +3037,13 @@ function parseExcelDate(v){
 // ═══════════════════════════════════════════════════════════════════════
 //  PROVEEDORES MODULE
 // ═══════════════════════════════════════════════════════════════════════
-let PROV_DB=[];
-function saveProv(){localStorage.setItem('prov_v1',JSON.stringify(PROV_DB));localStorage.setItem('contr_v1',JSON.stringify(PROV_DB));}
+let window.PROV_DB=[];
+function saveProv(){localStorage.setItem('prov_v1',JSON.stringify(window.PROV_DB));localStorage.setItem('contr_v1',JSON.stringify(window.PROV_DB));}
 // loadProv is defined above as async (loads from Supabase contratistas table)
 
 function updNavProv(){
   const el=document.getElementById('provCnt');
-  if(el)el.textContent=PROV_DB.length;
+  if(el)el.textContent=window.PROV_DB.length;
 }
 
 // ── List ─────────────────────────────────────────────────────────────────
@@ -3075,20 +3065,20 @@ function renderProv(){
 function renderProvList(){
   const box=document.getElementById('provList');if(!box)return;
   const srch=_provSrch.toLowerCase();
-  const arr=PROV_DB.filter(p=>!srch||(p.name||'').toLowerCase().includes(srch)||(p.vendorNum||'').includes(srch)||(p.rubro||'').toLowerCase().includes(srch));
+  const arr=window.PROV_DB.filter(p=>!srch||(p.name||'').toLowerCase().includes(srch)||(p.vendorNum||'').includes(srch)||(p.rubro||'').toLowerCase().includes(srch));
   
   let h=`<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
     <input type="text" placeholder="Buscar proveedor, N° vendor, rubro..." value="${esc(_provSrch)}" oninput="_provSrch=this.value;renderProvList()" style="flex:1;max-width:320px;font-size:13px">
-    <span style="font-size:12px;color:var(--g500)">${arr.length} de ${PROV_DB.length} proveedores</span>
+    <span style="font-size:12px;color:var(--g500)">${arr.length} de ${window.PROV_DB.length} proveedores</span>
     <button class="btn btn-s btn-sm" onclick="importProvModal()">📥 Importar SAP</button>
   </div>`;
 
   if(!arr.length){
     h+=`<div style="text-align:center;padding:60px 20px;color:var(--g500)">
       <div style="font-size:40px;margin-bottom:12px">🏢</div>
-      <p style="font-size:14px;font-weight:600;margin-bottom:6px">${PROV_DB.length?'Sin resultados':'Sin proveedores'}</p>
-      <p style="font-size:12px;margin-bottom:20px">${PROV_DB.length?'Probá con otra búsqueda.':'Importá el listado de SAP o agregá manualmente.'}</p>
-      ${!PROV_DB.length?`<div style="display:flex;gap:10px;justify-content:center"><button class="btn btn-s" onclick="importProvModal()">📥 Importar de SAP</button><button class="btn btn-p" onclick="openProvModal(null)">➕ Nuevo manualmente</button></div>`:''}
+      <p style="font-size:14px;font-weight:600;margin-bottom:6px">${window.PROV_DB.length?'Sin resultados':'Sin proveedores'}</p>
+      <p style="font-size:12px;margin-bottom:20px">${window.PROV_DB.length?'Probá con otra búsqueda.':'Importá el listado de SAP o agregá manualmente.'}</p>
+      ${!window.PROV_DB.length?`<div style="display:flex;gap:10px;justify-content:center"><button class="btn btn-s" onclick="importProvModal()">📥 Importar de SAP</button><button class="btn btn-p" onclick="openProvModal(null)">➕ Nuevo manualmente</button></div>`:''}
     </div>`;
     box.innerHTML=h;return;
   }
@@ -3096,7 +3086,7 @@ function renderProvList(){
   h+='<div class="prov-grid">';
   arr.forEach(p=>{
     const rubro=RUBROS.find(r=>r.code===p.rubro);
-    const cttos=DB.filter(c=>c.vendorNum===p.vendorNum||c.cont===p.name);
+    const cttos=window._DB.filter(c=>c.vendorNum===p.vendorNum||c.cont===p.name);
     h+=`<div class="prov-card" onclick="openProvDet('${p.id}')">
       <div class="prov-hdr">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px">
@@ -3127,10 +3117,10 @@ function openProvDet(id){_provDet=id;renderProv();}
 function closeProvDet(){_provDet=null;renderProv();}
 
 function renderProvDet(id){
-  const p=PROV_DB.find(x=>x.id===id);
+  const p=window.PROV_DB.find(x=>x.id===id);
   const box=document.getElementById('provDet');if(!box||!p)return;
   const rubro=RUBROS.find(r=>r.code===p.rubro);
-  const cttos=DB.filter(c=>c.vendorNum===p.vendorNum||c.cont===p.name);
+  const cttos=window._DB.filter(c=>c.vendorNum===p.vendorNum||c.cont===p.name);
 
   const contactsHtml=(p.contacts||[]).map((ct,ci)=>`
     <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--g50);border-radius:6px;margin-bottom:6px">
@@ -3179,7 +3169,7 @@ function renderProvDet(id){
 }
 
 function downloadProvBrochure(id){
-  const p=PROV_DB.find(x=>x.id===id);if(!p||!p.brochure)return;
+  const p=window.PROV_DB.find(x=>x.id===id);if(!p||!p.brochure)return;
   const a=document.createElement('a');a.href=p.brochure.data;a.download=p.brochure.name;a.click();
 }
 
@@ -3188,7 +3178,7 @@ let _provContacts=[];
 let _provBrochure=null;
 
 function openProvModal(id){
-  const p=id?PROV_DB.find(x=>x.id===id):null;
+  const p=id?window.PROV_DB.find(x=>x.id===id):null;
   _provContacts=p?.contacts?JSON.parse(JSON.stringify(p.contacts)):[];
   _provBrochure=p?.brochure||null;
 
@@ -3266,16 +3256,16 @@ function openProvModal(id){
 }
 
 function handleProvBrochure(input){
-  const f=input.files[0];if(!f)return;
+  const f=input.window.files[0];if(!f)return;
   const r=new FileReader();
   r.onload=e=>{_provBrochure={name:f.name,size:f.size,data:e.target.result};document.querySelector('#provModalBox .fzt').textContent=f.name;};
   r.readAsDataURL(f);
 }
 
-async function saveProvModal(editId){
+async function saveProvModal(window.editId){
   const name=document.getElementById('pm_name')?.value.trim();
   if(!name){toast('Ingresá el nombre del contratista','er');return;}
-  const id=editId||Date.now().toString(36)+Math.random().toString(36).substr(2,4);
+  const id=window.editId||Date.now().toString(36)+Math.random().toString(36).substr(2,4);
   const prov={
     id,name,
     vendorNum:document.getElementById('pm_vnum')?.value.trim()||'',
@@ -3284,9 +3274,9 @@ async function saveProvModal(editId){
     obs:document.getElementById('pm_obs')?.value.trim()||'',
     contacts:_provContacts,
     brochure:_provBrochure,
-    createdAt:editId?(PROV_DB.find(p=>p.id===editId)?.createdAt||new Date().toISOString()):new Date().toISOString(),
+    createdAt:window.editId?(window.PROV_DB.find(p=>p.id===window.editId)?.createdAt||new Date().toISOString()):new Date().toISOString(),
   };
-  if(editId){const i=PROV_DB.findIndex(p=>p.id===editId);if(i>=0)PROV_DB[i]=prov;else PROV_DB.push(prov);} else PROV_DB.push(prov);
+  if(window.editId){const i=window.PROV_DB.findIndex(p=>p.id===window.editId);if(i>=0)window.PROV_DB[i]=prov;else window.PROV_DB.push(prov);} else window.PROV_DB.push(prov);
   await saveProv();
   closeProvModal();updNavProv();_provDet=prov.id;renderProv();
   toast('Contratista guardado','ok');
@@ -3295,7 +3285,7 @@ async function saveProvModal(editId){
 function closeProvModal(){document.getElementById('provModalBack').style.display='none';}
 function deleteProv(id){
   if(!confirm('¿Eliminar este proveedor?'))return;
-  PROV_DB=PROV_DB.filter(p=>p.id!==id);saveProv();renderProvList();updNavProv();toast('Eliminado','ok');
+  window.PROV_DB=window.PROV_DB.filter(p=>p.id!==id);saveProv();renderProvList();updNavProv();toast('Eliminado','ok');
 }
 
 // ── SAP Vendors Import ────────────────────────────────────────────────────
@@ -3328,7 +3318,7 @@ function importProvModal(){
 }
 
 function processSapProvImport(input){
-  const file=input.files[0];if(!file)return;
+  const file=input.window.files[0];if(!file)return;
   const reader=new FileReader();
   reader.onload=async e=>{
     try{
@@ -3342,8 +3332,8 @@ function processSapProvImport(input){
         const vnum=String(r[1]||'').trim();
         if(!nameRaw||nameRaw==='nan')continue;
         const cleanName=nameRaw.replace(/^\d+\s+/,'').trim();
-        if(vnum && PROV_DB.find(p=>String(p.vendorNum||'').trim()===vnum)){skipped++;continue;}
-        PROV_DB.push({id:Date.now().toString(36)+Math.random().toString(36).substr(2,4)+'_'+added,name:cleanName,vendorNum:vnum,rubro:'',website:'',obs:'',contacts:[],brochure:null,createdAt:new Date().toISOString()});
+        if(vnum && window.PROV_DB.find(p=>String(p.vendorNum||'').trim()===vnum)){skipped++;continue;}
+        window.PROV_DB.push({id:Date.now().toString(36)+Math.random().toString(36).substr(2,4)+'_'+added,name:cleanName,vendorNum:vnum,rubro:'',website:'',obs:'',contacts:[],brochure:null,createdAt:new Date().toISOString()});
         added++;
       }
       await saveProv();updNavProv();renderProvList();
@@ -3354,10 +3344,10 @@ function processSapProvImport(input){
   reader.readAsArrayBuffer(file);
 }
 
-// ── Wire licitaciones to use PROV_DB ─────────────────────────────────────
-// Override the offers datalist in licitacion modal to use PROV_DB
+// ── Wire licitaciones to use window.PROV_DB ─────────────────────────────────────
+// Override the offers datalist in licitacion modal to use window.PROV_DB
 function getProvNames(){
-  return PROV_DB.length?PROV_DB.map(p=>p.name):(SAP_VENDORS.slice(0,100).map(v=>v.l));
+  return window.PROV_DB.length?window.PROV_DB.map(p=>p.name):(SAP_VENDORS.slice(0,100).map(v=>v.l));
 }
 
 
@@ -3367,20 +3357,20 @@ function getProvNames(){
 let _importedEnms = [];
 
 
-async function importEnmPdfs(files) {
-  if (!files || !files.length) return;
-  const cc = DB.find(x => x.id === detId);
+async function importEnmPdfs(window.files) {
+  if (!window.files || !window.files.length) return;
+  const cc = window._DB.find(x => x.id === window.detId);
   if (!cc) return;
 
   _importedEnms = [];
   document.getElementById('enmPdfModal').style.display = 'flex';
   document.getElementById('enmPdfResults').innerHTML = '';
   document.getElementById('enmPdfSaveBtn').style.display = 'none';
-  document.getElementById('enmPdfStatus').textContent = `Analizando ${files.length} archivo(s) con IA...`;
+  document.getElementById('enmPdfStatus').textContent = `Analizando ${window.files.length} archivo(s) con IA...`;
 
-  for (let i = 0; i < files.length; i++) {
-    const file = files[i];
-    document.getElementById('enmPdfStatus').textContent = `Analizando ${i+1}/${files.length}: ${file.name}...`;
+  for (let i = 0; i < window.files.length; i++) {
+    const file = window.files[i];
+    document.getElementById('enmPdfStatus').textContent = `Analizando ${i+1}/${window.files.length}: ${file.name}...`;
     try {
       const ext = getFileExt(file.name);
       if (!['pdf','doc','docx'].includes(ext)) throw new Error('Formato no soportado. Solo PDF, DOC o DOCX.');
@@ -3681,7 +3671,7 @@ function renderImportedEnmError(fileName, msg) {
 }
 
 window.saveImportedEnms = async function saveImportedEnms() {
-  const cc = DB.find(x => x.id === detId);
+  const cc = window._DB.find(x => x.id === window.detId);
   if (!cc) return;
   if (!cc.enmiendas) cc.enmiendas = [];
   if (!cc.tarifarios) cc.tarifarios = [];
@@ -3734,14 +3724,14 @@ window.saveImportedEnms = async function saveImportedEnms() {
 
 
 async function resetSection(section){
-  const c=DB.find(x=>x.id===detId); if(!c){toast('Contrato no encontrado','er');return;}
+  const c=window._DB.find(x=>x.id===window.detId); if(!c){toast('Contrato no encontrado','er');return;}
   if(section==='enmiendas'){
     if(!confirm('Esto eliminará las enmiendas y los tarifarios asociados a enmiendas. ¿Continuar?')) return;
     c.enmiendas=[];
     c.tarifarios=(c.tarifarios||[]).filter(t=>!t.enmNum);
     if(c.fechaFinOriginal) c.fechaFin=c.fechaFinOriginal;
     c.updatedAt=new Date().toISOString();
-    if(!SB_OK) localStorage.setItem('cta_v7', JSON.stringify(DB));
+    if(!window.SB_OK) localStorage.setItem('cta_v7', JSON.stringify(window._DB));
     else await sbUpsertItem('contratos', c);
     renderDet(); renderList(); toast('Enmiendas reiniciadas','ok');
     return;
@@ -3759,7 +3749,7 @@ async function resetSection(section){
     console.log('[resetSection] AVEs eliminados. _montoOriginal actualizado a:', c.monto.toFixed(2));
     
     c.updatedAt=new Date().toISOString();
-    if(!SB_OK) localStorage.setItem('cta_v7', JSON.stringify(DB));
+    if(!window.SB_OK) localStorage.setItem('cta_v7', JSON.stringify(window._DB));
     else await sbUpsertItem('contratos', c);
     renderDet(); toast('AVEs reiniciados. Monto base: '+fN(c.monto),'ok');
     return;
@@ -3768,7 +3758,7 @@ async function resetSection(section){
     if(!confirm('¿Eliminar todos los tarifarios de este contrato?')) return;
     c.tarifarios=[];
     c.updatedAt=new Date().toISOString();
-    if(!SB_OK) localStorage.setItem('cta_v7', JSON.stringify(DB));
+    if(!window.SB_OK) localStorage.setItem('cta_v7', JSON.stringify(window._DB));
     else await sbUpsertItem('contratos', c);
     renderDet(); toast('Tarifarios reiniciados','ok');
     return;
@@ -3781,7 +3771,7 @@ async function resetSection(section){
 // ═══════════════════════════════════════
 async function resetHistorial(cid) {
   if (!confirm('¿Resetear ENMIENDAS, AVEs y TARIFARIOS de este contrato? Esta acción no se puede deshacer.')) return;
-  const c = DB.find(x => x.id === (cid || detId));
+  const c = window._DB.find(x => x.id === (cid || window.detId));
   if (!c) return;
   c.enmiendas = [];
   c.aves = [];
@@ -3798,7 +3788,7 @@ async function resetHistorial(cid) {
 // ═══════════════════════════════════════
 async function delTar(idx) {
   if (!confirm('¿Eliminar este tarifario?')) return;
-  const c = DB.find(x => x.id === detId);
+  const c = window._DB.find(x => x.id === window.detId);
   if (!c) return;
   c.tarifarios = (c.tarifarios || []).filter((_, i) => i !== idx);
   c.updatedAt = new Date().toISOString();
@@ -3812,7 +3802,7 @@ async function delTar(idx) {
 // ═══════════════════════════════════════
 
 async function resetHistorial(id) {
-  const cc = DB.find(x => x.id === id);
+  const cc = window._DB.find(x => x.id === id);
   if (!cc) return;
   const total = (cc.enmiendas?.length||0) + (cc.aves?.length||0) + (cc.tarifarios?.length||0);
   if (!confirm(`¿Resetear historial completo de ${cc.num}?\n\nSe eliminarán:\n• ${cc.enmiendas?.length||0} enmiendas\n• ${cc.aves?.length||0} AVEs\n• ${cc.tarifarios?.length||0} tarifarios\n\nEsta acción no se puede deshacer.`)) return;
@@ -3827,7 +3817,7 @@ async function resetHistorial(id) {
 }
 
 async function delEnm(num) {
-  const cc = DB.find(x => x.id === detId);
+  const cc = window._DB.find(x => x.id === window.detId);
   if (!cc) return;
   if (!confirm(`¿Eliminar Enmienda N°${num}?`)) return;
   cc.enmiendas = (cc.enmiendas || []).filter(e => e.num !== num);
@@ -3839,7 +3829,7 @@ async function delEnm(num) {
   });
   (cc.aves || []).forEach(a => { if (a.enmRef === num) a.enmRef = null; else if (a.enmRef > num) a.enmRef = a.enmRef - 1; });
   cc.updatedAt = new Date().toISOString();
-  if (!SB_OK) localStorage.setItem('cta_v7', JSON.stringify(DB));
+  if (!window.SB_OK) localStorage.setItem('cta_v7', JSON.stringify(window._DB));
   else await sbUpsertItem('contratos', cc);
   renderDet();
   renderList();
@@ -3848,7 +3838,7 @@ async function delEnm(num) {
 }
 
 async function delAveById(aveId) {
-  const cc = DB.find(x => x.id === detId);
+  const cc = window._DB.find(x => x.id === window.detId);
   if (!cc) return;
   if (!confirm('¿Eliminar este AVE?')) return;
   
@@ -3856,12 +3846,12 @@ async function delAveById(aveId) {
   cc.aves = cc.aves.filter(a => a.id !== aveId);
   cc.updatedAt = new Date().toISOString();
   
-  // Actualizar DB array
-  const idx = DB.findIndex(x => x.id === detId);
-  if(idx !== -1) DB[idx] = cc;
+  // Actualizar window._DB array
+  const idx = window._DB.findIndex(x => x.id === window.detId);
+  if(idx !== -1) window._DB[idx] = cc;
   
   // Guardar en Supabase
-  if(!SB_OK) localStorage.setItem('cta_v7', JSON.stringify(DB));
+  if(!window.SB_OK) localStorage.setItem('cta_v7', JSON.stringify(window._DB));
   else await sbUpsertItem('contratos', cc);
   
   renderDet();
@@ -3869,7 +3859,7 @@ async function delAveById(aveId) {
 }
 
 async function deleteLastAutoAve() {
-  const cc = DB.find(x => x.id === detId);
+  const cc = window._DB.find(x => x.id === window.detId);
   if (!cc || !cc.aves) return;
   
   // Buscar AVEs AUTO ordenados por fecha (más reciente primero)
@@ -3889,12 +3879,12 @@ async function deleteLastAutoAve() {
   cc.aves = cc.aves.filter(a => a.id !== lastAve.id);
   cc.updatedAt = new Date().toISOString();
   
-  // Actualizar DB array
-  const idx = DB.findIndex(x => x.id === detId);
-  if(idx !== -1) DB[idx] = cc;
+  // Actualizar window._DB array
+  const idx = window._DB.findIndex(x => x.id === window.detId);
+  if(idx !== -1) window._DB[idx] = cc;
   
   // Guardar en Supabase
-  if(!SB_OK) localStorage.setItem('cta_v7', JSON.stringify(DB));
+  if(!window.SB_OK) localStorage.setItem('cta_v7', JSON.stringify(window._DB));
   else await sbUpsertItem('contratos', cc);
   
   renderDet();
@@ -3906,9 +3896,9 @@ async function deleteLastAutoAve() {
 (function(){
   window.APP_VERSION='v14-base';
   function setVersionBadgeV14(){ try{ var el=document.getElementById('buildTag'); if(el) el.textContent='v14-base · Stable'; }catch(_e){} }
-  function ensureGlobalTarAiInput(){ var inp=document.getElementById('tarAiIn'); if(!inp){ inp=document.createElement('input'); inp.type='file'; inp.id='tarAiIn'; inp.accept='.doc,.docx,.xls,.xlsx'; inp.style.display='none'; inp.onchange=function(){ try{ if(typeof importPriceListsFromFiles==='function') importPriceListsFromFiles(this.files); } finally{ this.value=''; } }; document.body.appendChild(inp);} return inp; }
+  function ensureGlobalTarAiInput(){ var inp=document.getElementById('tarAiIn'); if(!inp){ inp=document.createElement('input'); inp.type='file'; inp.id='tarAiIn'; inp.accept='.doc,.docx,.xls,.xlsx'; inp.style.display='none'; inp.onchange=function(){ try{ if(typeof importPriceListsFromFiles==='function') importPriceListsFromFiles(this.window.files); } finally{ this.value=''; } }; document.body.appendChild(inp);} return inp; }
   openPriceListImportPicker=function(){ var inp=ensureGlobalTarAiInput(); try{ inp.click(); }catch(e){ console.error('openPriceListImportPicker v14',e); if(typeof toast==='function') toast('No se pudo abrir el selector de listas','er'); } };
-  function restoreTarSectionV14(){ try{ var card=document.getElementById('detCard'); if(!card) return; var boxes=Array.from(card.querySelectorAll('.section-box')); var sec=boxes.find(function(b){ return /Listas de Precios \/ Tarifarios/i.test((b.textContent||'')); }); if(!sec) return; if(!sec.querySelector('#tarContainer')){ var cc=(typeof DB!=='undefined'&&Array.isArray(DB))?DB.find(function(x){return x.id===detId;}):null; var count=((cc&&cc.tarifarios)||[]).length; sec.innerHTML='<h3>Listas de Precios / Tarifarios <span class="tcnt">'+count+' tablas</span></h3><div id="tarContainer"></div>'; } ensureGlobalTarAiInput(); if(typeof renderTarifario==='function') renderTarifario(); }catch(e){ console.error('restoreTarSectionV14',e);} }
+  function restoreTarSectionV14(){ try{ var card=document.getElementById('detCard'); if(!card) return; var boxes=Array.from(card.querySelectorAll('.section-box')); var sec=boxes.find(function(b){ return /Listas de Precios \/ Tarifarios/i.test((b.textContent||'')); }); if(!sec) return; if(!sec.querySelector('#tarContainer')){ var cc=(typeof window._DB!=='undefined'&&Array.isArray(window._DB))?window._DB.find(function(x){return x.id===window.detId;}):null; var count=((cc&&cc.tarifarios)||[]).length; sec.innerHTML='<h3>Listas de Precios / Tarifarios <span class="tcnt">'+count+' tablas</span></h3><div id="tarContainer"></div>'; } ensureGlobalTarAiInput(); if(typeof renderTarifario==='function') renderTarifario(); }catch(e){ console.error('restoreTarSectionV14',e);} }
   if(typeof renderDet==='function'){ var __origRenderDet=renderDet; renderDet=function(){ var out=__origRenderDet.apply(this,arguments); setTimeout(restoreTarSectionV14,0); setTimeout(setVersionBadgeV14,0); return out; }; }
   if(typeof go==='function'){ var __origGo=go; go=function(v){ var out=__origGo.apply(this,arguments); if(v==='detail') setTimeout(restoreTarSectionV14,0); setTimeout(setVersionBadgeV14,0); return out; }; }
   function __pad2(n){ return String(n).padStart(2,'0'); }
@@ -4069,7 +4059,7 @@ var PolUpdate = (function(){
     var stored=localStorage.getItem(key); 
     if(!stored){
       // MIGRAR desde gatillos si existen
-      var contract=DB.find(function(c){return c.id==cid;});
+      var contract=window._DB.find(function(c){return c.id==cid;});
       if(contract&&contract.gatillos){
         return migrateFromGatillos(contract);
       }
@@ -4105,7 +4095,7 @@ var PolUpdate = (function(){
   function saveConditions(cid,data){ 
     localStorage.setItem('pol_cond_'+cid,JSON.stringify(data)); 
     // También guardar en contract.gatillos para compatibilidad
-    var contract=DB.find(function(c){return c.id==cid;});
+    var contract=window._DB.find(function(c){return c.id==cid;});
     if(contract){
       if(!contract.gatillos)contract.gatillos={};
       contract.gatillos.B={
@@ -4216,7 +4206,7 @@ var PolUpdate = (function(){
     var newAve={id:Date.now()+'',tipo:'POLINOMICA',enmRef:newEnm.num,fecha:updateDate,periodo:updateDate,monto:state.aveAmount,concepto:'AVE por actualización polinómica',autoGenerated:true};
     aves.push(newAve); contract.aves=aves;
     contract.monto=(contract.monto||0)+state.aveAmount;
-    var idx=DB.findIndex(function(c){return c.id===contract.id;}); if(idx!==-1)DB[idx]=contract;
+    var idx=window._DB.findIndex(function(c){return c.id===contract.id;}); if(idx!==-1)window._DB[idx]=contract;
     save();
     if(state.conditions){
       state.conditions.lastUpdateDate=updateDate;
@@ -4387,7 +4377,7 @@ function evaluateConditions(cid){
   if(!baseMonth){toast('Seleccione un mes base','er');return;}
   if(compareYm(mesEval,baseMonth)<=0){toast('El mes de evaluación debe ser posterior a la base','er');return;}
   localStorage.setItem('pol_eval_month_'+cid,mesEval);
-  var contract=DB.find(function(c){return c.id==cid;});
+  var contract=window._DB.find(function(c){return c.id==cid;});
   if(!contract){toast('Contrato no encontrado','er');return;}
   var conditions=PolUpdate.getConditions(cid);
   if(!conditions){toast('Sin condiciones configuradas','er');return;}
@@ -4455,7 +4445,7 @@ function evaluateConditions(cid){
   var result={mesEval:mesEval,baseMonth:baseMonth,fecha:new Date().toISOString(),details:details,cumpleGeneral:cumpleGeneral,firstComplianceMonth:firstComplianceMonth||'',eligibleMonths:eligibleMonths};
   localStorage.setItem('pol_eval_result_'+cid,JSON.stringify(result));
   toast(cumpleGeneral?'✓ Condiciones cumplidas':'○ No cumple aún',cumpleGeneral?'ok':'er');
-  if(typeof detId!=='undefined') detId=cid;
+  if(typeof window.detId!=='undefined') window.detId=cid;
   if(typeof renderDet==='function'){ renderDet(); }
   else if(typeof go==='function'){ go('detail'); }
 }
@@ -4489,7 +4479,7 @@ function getEvaluationResult(cid,mesEval){
 }
 
 function getEligibleAdjustmentMonths(cid, baseMonth, evalMonth){
-  var contract=DB.find(function(c){return c.id==cid;});
+  var contract=window._DB.find(function(c){return c.id==cid;});
   if(!contract)return [];
   var conditions=PolUpdate.getConditions(cid);
   if(!conditions)return [];
@@ -4552,7 +4542,7 @@ function getReferenceMonthForTarget(cid, targetYm, baseYm){
 }
 function getSelectedPeriodsSummaryRows(cid){
   var res=getEvaluationResult(cid,'')||getEvaluationResult(cid,null); if(!res) return [];
-  var contract=DB.find(function(c){return c.id==cid;}); if(!contract) return [];
+  var contract=window._DB.find(function(c){return c.id==cid;}); if(!contract) return [];
   var baseYm=res.baseMonth;
   var selected=getSelectedAdjustmentMonths(cid).slice().sort();
   return selected.map(function(ym){
@@ -4573,7 +4563,7 @@ function renderSelectedPeriodsSummary(cid){
     }).join('');
 }
 function generateSelectedPriceLists(cid){
-  var contract=DB.find(function(c){return c.id==cid;});
+  var contract=window._DB.find(function(c){return c.id==cid;});
   if(!contract){ toast('Contrato no encontrado','er'); return; }
   var rows=getSelectedPeriodsSummaryRows(cid);
   if(!rows.length){ toast('Seleccioná al menos un período','er'); return; }
@@ -4704,12 +4694,12 @@ function generateSelectedPriceLists(cid){
   localStorage.removeItem('pol_selected_months_'+cid);
   console.log('[generateSelectedPriceLists] Evaluación limpiada. Recalcular desde', contract.btar);
   
-  // Actualizar contrato en DB array
-  var idx = DB.findIndex(function(c){return c.id === cid;});
-  if(idx !== -1) DB[idx] = contract;
+  // Actualizar contrato en window._DB array
+  var idx = window._DB.findIndex(function(c){return c.id === cid;});
+  if(idx !== -1) window._DB[idx] = contract;
   
   save();
-  if(typeof detId!=='undefined') detId=cid;
+  if(typeof window.detId!=='undefined') window.detId=cid;
   if(typeof renderDet==='function') renderDet();
   setTimeout(function(){ renderSelectedPeriodsSummary(cid); }, 50);
   toast((created||rows.length)+' lista(s) de precios generada(s)','ok');
@@ -4744,7 +4734,7 @@ function renderEligibleMonthsModal(cid){
   if(old) old.remove();
   var res=getEvaluationResult(cid,'') || getEvaluationResult(cid,null);
   if(!res) return;
-  var contract=DB.find(function(c){return c.id==cid;}); if(!contract) return;
+  var contract=window._DB.find(function(c){return c.id==cid;}); if(!contract) return;
   var months=(res.eligibleMonths||[]).slice();
   var selected=getSelectedAdjustmentMonths(cid).slice().sort();
   var chips='';
@@ -4790,7 +4780,7 @@ function monthsBetween(d1,d2){
 }
 
 function openConditionsModal(cid){
-  var contract=DB.find(function(c){return c.id==cid;}); if(!contract)return;
+  var contract=window._DB.find(function(c){return c.id==cid;}); if(!contract)return;
   var conditions=PolUpdate.getConditions(cid)||{enabled:false,moThreshold:0,allComponentsThreshold:0,monthsElapsed:0,baseDate:contract.fechaIni,lastUpdateDate:null,resetBase:false};
   var modal=document.createElement('div'); modal.id='conditionsModal';
   modal.style.cssText='display:flex;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9000;align-items:center;justify-content:center';
@@ -4827,7 +4817,7 @@ function saveConditionsModal(cid){
 }
 
 function previewUpdate(cid){
-  var contract=DB.find(function(c){return c.id==cid;}); if(!contract)return;
+  var contract=window._DB.find(function(c){return c.id==cid;}); if(!contract)return;
   var calc=PolUpdate.calculateUpdate(contract); if(!calc)return;
   var modal=document.createElement('div'); modal.id='updatePreviewModal';
   modal.style.cssText='display:flex;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9000;align-items:center;justify-content:center';
@@ -4896,19 +4886,19 @@ function confirmApplyUpdate(){ if(!confirm('¿Confirmar actualización? Se gener
 
   function getDB(){
     try {
-      if (typeof DB !== 'undefined' && Array.isArray(DB)) return DB;
+      if (typeof window._DB !== 'undefined' && Array.isArray(window._DB)) return window._DB;
     } catch(_e) {}
     try {
-      if (Array.isArray(window.DB)) return window.DB;
+      if (Array.isArray(window.window._DB)) return window.window._DB;
     } catch(_e) {}
     return [];
   }
 
   function getDetId(){
     try {
-      if (typeof detId !== 'undefined') return detId;
+      if (typeof window.detId !== 'undefined') return window.detId;
     } catch(_e) {}
-    try { return window.detId; } catch(_e) {}
+    try { return window.window.detId; } catch(_e) {}
     return null;
   }
 
@@ -5075,7 +5065,7 @@ function confirmApplyUpdate(){ if(!confirm('¿Confirmar actualización? Se gener
   async function persistContract(cc){
     cc.updatedAt = new Date().toISOString();
     try {
-      if (typeof SB_OK !== 'undefined' && SB_OK && typeof sbUpsertItem === 'function') {
+      if (typeof window.SB_OK !== 'undefined' && window.SB_OK && typeof sbUpsertItem === 'function') {
         await sbUpsertItem('contratos', cc);
         return;
       }

@@ -6,12 +6,6 @@
 async function initApp(__fromLogin) {
   showLoader('Conectando con Supabase...');
   
-  // Event listeners para formulario
-  ['f_ini','f_fin'].forEach(id => {
-    const el = document.getElementById(id);
-    if(el) el.onchange = calcPlazo;
-  });
-  
   // Require login (skip if coming from login button)
   if(!__fromLogin){
     const logged = await requireLogin();
@@ -73,6 +67,12 @@ async function initApp(__fromLogin) {
   }
 
   hideLoader();
+  
+  // Event listeners para formulario (después de que bundle.js esté cargado)
+  ['f_ini','f_fin'].forEach(id => {
+    const el = document.getElementById(id);
+    if(el && typeof calcPlazo === 'function') el.onchange = calcPlazo;
+  });
   
   // Render initial view
   if(typeof buildPoly === 'function') buildPoly();
